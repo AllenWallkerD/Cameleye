@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/components/app-provider";
+import { PwaRegister } from "@/components/pwa-register";
 
 const inter = Inter({
   variable: "--font-geist-sans",
@@ -11,6 +12,13 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Cameleye — An eye on your money",
   description: "Personal finance tracker · income, expenses, goals",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "Cameleye", statusBarStyle: "default" },
+  icons: { icon: "/icon.svg", apple: "/apple-touch-icon.png" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#7c3aed",
 };
 
 export default function RootLayout({
@@ -26,6 +34,7 @@ export default function RootLayout({
           }}
         />
         <AppProvider>{children}</AppProvider>
+        <PwaRegister />
       </body>
     </html>
   );
