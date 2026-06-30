@@ -9,7 +9,7 @@ import { RecurringDrawer } from "@/components/recurring-drawer";
 import { LOCALES, type Locale } from "@/lib/i18n";
 import { CURRENCIES, formatMoney, type CurrencyCode } from "@/lib/currency";
 import { exportTransactionsCSV } from "@/lib/export";
-import type { CategoryMeta } from "@/lib/data";
+import type { CategoryMeta, Recurring } from "@/lib/data";
 
 export default function SettingsPage() {
   const {
@@ -20,6 +20,7 @@ export default function SettingsPage() {
   const [catOpen, setCatOpen] = useState(false);
   const [editing, setEditing] = useState<CategoryMeta | null>(null);
   const [recOpen, setRecOpen] = useState(false);
+  const [recEdit, setRecEdit] = useState<Recurring | null>(null);
   const [pw, setPw] = useState("");
   const [pwBusy, setPwBusy] = useState(false);
 
@@ -139,6 +140,13 @@ export default function SettingsPage() {
                     {formatMoney(r.amountKzt, currency, { compact: true })}
                   </span>
                   <button
+                    onClick={() => setRecEdit(r)}
+                    className="shrink-0 rounded-lg p-1.5 text-fg-muted transition-colors hover:text-accent"
+                    aria-label={t("edit")}
+                  >
+                    <Icon.pencil width={15} height={15} />
+                  </button>
+                  <button
                     onClick={async () => {
                       if (await confirm(t("confirm.delete"))) removeRecurring(r.id);
                     }}
@@ -255,6 +263,9 @@ export default function SettingsPage() {
 
       <AddCategoryDrawer open={catOpen} onClose={() => setCatOpen(false)} editing={editing} />
       <RecurringDrawer open={recOpen} onClose={() => setRecOpen(false)} />
+      {recEdit && (
+        <RecurringDrawer key={recEdit.id} open editing={recEdit} onClose={() => setRecEdit(null)} />
+      )}
     </>
   );
 }

@@ -90,6 +90,7 @@ type Ctx = {
   removeBudget: (category: string) => Promise<void>;
   recurring: Recurring[];
   addRecurring: (r: Omit<Recurring, "id" | "lastYm" | "active">) => Promise<void>;
+  updateRecurring: (id: string, patch: Omit<Recurring, "id" | "lastYm" | "active">) => Promise<void>;
   removeRecurring: (id: string) => Promise<void>;
   addTransaction: (tx: NewTx) => Promise<void>;
   updateTransaction: (id: string, patch: NewTx) => Promise<void>;
@@ -450,6 +451,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [supabase, userId, toast, t]
   );
 
+  const updateRecurring = useCallback(
+    async (id: string, patch: Omit<Recurring, "id" | "lastYm" | "active">) => {
+      setRecurring((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+      const { error } = await supabase
+        .from("recurring")
+        .update({
+          type: patch.type,
+          category: patch.category,
+          amount_kzt: patch.amountKzt,
+          note: patch.note,
+          day_of_month: patch.dayOfMonth,
+        })
+        .eq("id", id);
+      toast(error ? t("toast.error") : t("toast.updated"), error ? "err" : "ok");
+    },
+    [supabase, toast, t]
+  );
+
   const removeRecurring = useCallback(
     async (id: string) => {
       setRecurring((prev) => prev.filter((x) => x.id !== id));
@@ -674,6 +693,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     removeBudget,
     recurring,
     addRecurring,
+    updateRecurring,
     removeRecurring,
     addTransaction,
     updateTransaction,

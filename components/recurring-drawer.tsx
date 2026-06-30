@@ -4,16 +4,26 @@ import { useEffect, useState } from "react";
 import { useApp } from "./app-provider";
 import { Icon } from "./icons";
 import { CategoryIcon } from "./category-icons";
-import { CURRENCIES, groupAmountInput, parseAmountInput } from "@/lib/currency";
-import type { CatType } from "@/lib/data";
+import { CURRENCIES, convert, groupAmountInput, parseAmountInput } from "@/lib/currency";
+import type { CatType, Recurring } from "@/lib/data";
 
-export function RecurringDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { t, currency, categories, addRecurring } = useApp();
-  const [type, setType] = useState<CatType>("expense");
-  const [category, setCategory] = useState<string>("");
-  const [amount, setAmount] = useState("");
-  const [day, setDay] = useState("1");
-  const [note, setNote] = useState("");
+export function RecurringDrawer({
+  open,
+  onClose,
+  editing = null,
+}: {
+  open: boolean;
+  onClose: () => void;
+  editing?: Recurring | null;
+}) {
+  const { t, currency, categories, addRecurring, updateRecurring } = useApp();
+  const [type, setType] = useState<CatType>(editing?.type ?? "expense");
+  const [category, setCategory] = useState<string>(editing?.category ?? "");
+  const [amount, setAmount] = useState(
+    editing ? groupAmountInput(String(convert(editing.amountKzt, currency))) : ""
+  );
+  const [day, setDay] = useState(editing ? String(editing.dayOfMonth) : "1");
+  const [note, setNote] = useState(editing?.note ?? "");
   const [busy, setBusy] = useState(false);
 
   const cats = categories.filter((c) => c.type === type);
@@ -34,14 +44,16 @@ export function RecurringDrawer({ open, onClose }: { open: boolean; onClose: () 
     const value = parseAmountInput(amount);
     const d = parseInt(day, 10);
     if (value <= 0 || !category || !d) return;
-    setBusy(true);
-    await addRecurring({
+    const payload = {
       type,
       category,
       amountKzt: value / CURRENCIES[currency].ratePerKzt,
       note,
       dayOfMonth: d,
-    });
+    };
+    setBusy(true);
+    if (editing) await updateRecurring(editing.id, payload);
+    else await addRecurring(payload);
     setBusy(false);
     setAmount("");
     setNote("");
@@ -54,7 +66,7 @@ export function RecurringDrawer({ open, onClose }: { open: boolean; onClose: () 
 
       <div className="animate-fade-up relative flex h-full w-full max-w-md flex-col bg-card shadow-2xl">
         <div className="flex items-center justify-between border-b px-6 py-4">
-          <h2 className="text-lg font-semibold">{t("recurring.new")}</h2>
+          <h2 className="text-lg font-semibold">{editing ? t("edit") : t("recurring.new")}</h2>
           <button onClick={onClose} className="rounded-lg p-1.5 text-fg-muted hover:text-fg">
             <Icon.close width={20} height={20} />
           </button>

@@ -24,9 +24,10 @@ export function TopBar() {
         <span className="text-grad truncate text-lg font-bold tracking-tight">{t("appName")}</span>
       </div>
 
-      {/* desktop greeting */}
+      {/* desktop greeting — full text only where there's room (xl); the
+          container stays as a flex spacer at lg so controls right-align */}
       <div className="hidden min-w-0 flex-1 items-center lg:flex">
-        <h1 className="truncate text-xl font-semibold tracking-tight">
+        <h1 className="hidden truncate text-xl font-semibold tracking-tight xl:block">
           {displayName ? `${t("greeting")}, ${displayName}` : t("nav.dashboard")}
         </h1>
       </div>
