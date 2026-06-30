@@ -17,7 +17,7 @@ export default function SettingsPage() {
   const {
     t, locale, setLocale, currency, setCurrency, theme, toggleTheme,
     displayName, email, categories, categoryById, removeCategory,
-    recurring, removeRecurring, transactions, updatePassword, importTransactions, toast, confirm, signOut,
+    recurring, removeRecurring, transactions, updatePassword, importTransactions, deleteAccount, toast, confirm, signOut,
   } = useApp();
   const fileRef = useRef<HTMLInputElement>(null);
   const [catOpen, setCatOpen] = useState(false);
@@ -288,6 +288,20 @@ export default function SettingsPage() {
         <Icon.logout width={16} height={16} />
         {t("auth.signout")}
       </button>
+
+      {/* danger zone */}
+      <section className="rounded-2xl border border-neg/30 bg-card p-5 shadow-sm">
+        <h2 className="mb-3 text-sm font-semibold text-neg">{t("danger.title")}</h2>
+        <button
+          onClick={async () => {
+            if (await confirm(t("danger.confirm"))) deleteAccount();
+          }}
+          className="flex items-center gap-2 rounded-xl bg-neg px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
+        >
+          <Icon.trash width={16} height={16} />
+          {t("danger.delete")}
+        </button>
+      </section>
 
       <AddCategoryDrawer open={catOpen} onClose={() => setCatOpen(false)} editing={editing} />
       <RecurringDrawer open={recOpen} onClose={() => setRecOpen(false)} />

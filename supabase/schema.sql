@@ -138,3 +138,17 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- Lets a logged-in user delete their OWN account. ON DELETE CASCADE on every
+-- table wipes their data automatically. (No paid edge function needed.)
+create or replace function public.delete_user()
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  delete from auth.users where id = auth.uid();
+$$;
+
+revoke all on function public.delete_user() from public, anon;
+grant execute on function public.delete_user() to authenticated;

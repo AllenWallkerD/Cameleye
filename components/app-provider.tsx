@@ -78,6 +78,7 @@ type Ctx = {
   displayName: string | undefined;
   signOut: () => Promise<void>;
   updatePassword: (newPassword: string) => Promise<boolean>;
+  deleteAccount: () => Promise<void>;
   addTxOpen: boolean;
   openAddTransaction: () => void;
   closeAddTransaction: () => void;
@@ -733,6 +734,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [supabase, toast, t]
   );
 
+  const deleteAccount = useCallback(async () => {
+    // delete_user() is a SECURITY DEFINER SQL function that removes the auth
+    // user; ON DELETE CASCADE wipes all their rows. Then we sign out.
+    const { error } = await supabase.rpc("delete_user");
+    if (error) {
+      toast(t("toast.error"), "err");
+      return;
+    }
+    await supabase.auth.signOut();
+  }, [supabase, toast, t]);
+
   const value: Ctx = {
     locale,
     setLocale,
@@ -749,6 +761,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       session?.user?.email?.split("@")[0],
     signOut,
     updatePassword,
+    deleteAccount,
     addTxOpen,
     openAddTransaction,
     closeAddTransaction,
