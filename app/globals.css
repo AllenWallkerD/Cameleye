@@ -1,0 +1,146 @@
+@import "tailwindcss";
+
+/* class-based dark mode (toggled on <html class="dark">) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --bg: #f5f3fc;
+  --bg-subtle: #ebe6f8;
+  --card: #ffffff;
+  --card-muted: #faf8ff;
+  --border: #e7e0f5;
+  --fg: #181126;
+  --fg-muted: #6b6286;
+  --accent: #7c3aed;
+  --accent-2: #c026d3;
+  --accent-soft: #f0e8fe;
+  --pos: #10b981;
+  --neg: #f43f6e;
+  --grad-accent: linear-gradient(135deg, #6d28d9 0%, #9333ea 50%, #c026d3 100%);
+  --nebula: radial-gradient(
+      900px circle at 12% -8%,
+      rgba(124, 58, 237, 0.1),
+      transparent 42%
+    ),
+    radial-gradient(700px circle at 92% 4%, rgba(192, 38, 211, 0.08), transparent 42%);
+}
+
+.dark {
+  --bg: #0a0713;
+  --bg-subtle: #120c20;
+  --card: #15101f;
+  --card-muted: #1c1430;
+  --border: #281e3e;
+  --fg: #f1ecfb;
+  --fg-muted: #9a8fb6;
+  --accent: #a78bfa;
+  --accent-2: #e879f9;
+  --accent-soft: #221634;
+  --pos: #34d399;
+  --neg: #fb7185;
+  --grad-accent: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #d946ef 100%);
+  --nebula: radial-gradient(
+      1000px circle at 12% -10%,
+      rgba(124, 58, 237, 0.22),
+      transparent 45%
+    ),
+    radial-gradient(800px circle at 92% 2%, rgba(217, 70, 239, 0.14), transparent 45%),
+    radial-gradient(600px circle at 50% 120%, rgba(99, 102, 241, 0.12), transparent 50%);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-card: var(--card);
+  --color-card-muted: var(--card-muted);
+  --color-border: var(--border);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-accent-soft: var(--accent-soft);
+  --color-pos: var(--pos);
+  --color-neg: var(--neg);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* subtle space nebula glow — the only ambient gradient */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: var(--nebula);
+  pointer-events: none;
+}
+
+/* gradient helpers — used sparingly (logo, primary CTA, key accents) */
+.grad-accent {
+  background-image: var(--grad-accent);
+}
+.text-grad {
+  background-image: var(--grad-accent);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* tidy scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+  border: 3px solid var(--bg);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-up {
+  animation: fadeUp 0.4s ease both;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-subtle) 25%,
+    var(--border) 37%,
+    var(--bg-subtle) 63%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 0.75rem;
+}
