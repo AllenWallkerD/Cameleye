@@ -206,7 +206,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     writePref("cameleye.theme", theme);
   }, [theme]);
 
-  useEffect(() => writePref("cameleye.locale", locale), [locale]);
+  useEffect(() => {
+    writePref("cameleye.locale", locale);
+    document.documentElement.lang = locale;
+  }, [locale]);
   useEffect(() => writePref("cameleye.currency", currency), [currency]);
 
   // auth bootstrap + subscription

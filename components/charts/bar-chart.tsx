@@ -34,7 +34,7 @@ export function BarChart({
 
   return (
     <div className="relative w-full">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" aria-hidden="true">
         {/* gridlines */}
         {[0, 0.25, 0.5, 0.75, 1].map((g) => (
           <g key={g}>

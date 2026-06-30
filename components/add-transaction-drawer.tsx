@@ -7,6 +7,7 @@ import { CategoryIcon } from "./category-icons";
 import { AddCategoryDrawer } from "./add-category-drawer";
 import { DatePicker, MIN_PICKABLE_DATE, todayISO } from "./date-picker";
 import { CURRENCIES, convert, groupAmountInput, parseAmountInput } from "@/lib/currency";
+import { useEscape } from "@/lib/use-escape";
 import type { CatType, Transaction } from "@/lib/data";
 
 export function AddTransactionDrawer({
@@ -37,6 +38,8 @@ export function AddTransactionDrawer({
       setCategory(cats[0]?.id ?? "");
     }
   }, [cats, category]);
+
+  useEscape(onClose);
 
   if (!open) return null;
 

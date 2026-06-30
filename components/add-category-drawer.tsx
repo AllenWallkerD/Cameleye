@@ -8,6 +8,7 @@ import {
   CATEGORY_ICON_KEYS,
   CategoryIcon,
 } from "./category-icons";
+import { useEscape } from "@/lib/use-escape";
 import type { CategoryMeta, CatType } from "@/lib/data";
 
 export function AddCategoryDrawer({
@@ -29,6 +30,8 @@ export function AddCategoryDrawer({
   const [icon, setIcon] = useState(editing?.icon ?? CATEGORY_ICON_KEYS[0]);
   const [color, setColor] = useState(editing?.color ?? CATEGORY_COLORS[5]);
   const [busy, setBusy] = useState(false);
+
+  useEscape(onClose);
 
   if (!open) return null;
 

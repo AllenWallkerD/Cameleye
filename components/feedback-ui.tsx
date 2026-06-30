@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 export type Toast = { id: number; text: string; kind: "ok" | "err" };
 export type ConfirmState = { text: string; resolve: (ok: boolean) => void } | null;
 
@@ -42,9 +44,18 @@ export function ConfirmDialog({
   bodyLabel: string;
   onResolve: (ok: boolean) => void;
 }) {
+  useEffect(() => {
+    if (!state) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onResolve(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [state, onResolve]);
+
   if (!state) return null;
   return (
-    <div className="fixed inset-0 z-[90] grid place-items-center p-4">
+    <div className="fixed inset-0 z-[90] grid place-items-center p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => onResolve(false)} />
       <div className="animate-fade-up relative w-full max-w-sm rounded-2xl border bg-card p-6 shadow-2xl">
         <div className="flex flex-col items-center text-center">

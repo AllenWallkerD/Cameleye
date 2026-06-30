@@ -32,7 +32,7 @@ export function DonutChart({
 
   return (
     <div className="@container flex flex-col items-center gap-4">
-      <svg viewBox="0 0 200 200" className="h-40 w-40 shrink-0">
+      <svg viewBox="0 0 200 200" className="h-40 w-40 shrink-0" aria-hidden="true">
         {arcs.map((a) => (
           <path
             key={a.label}

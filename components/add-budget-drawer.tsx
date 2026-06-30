@@ -10,6 +10,7 @@ import {
   groupAmountInput,
   parseAmountInput,
 } from "@/lib/currency";
+import { useEscape } from "@/lib/use-escape";
 
 export function AddBudgetDrawer({
   open,
@@ -36,6 +37,8 @@ export function AddBudgetDrawer({
     editingBudget ? groupAmountInput(String(Math.round(convert(editingBudget.limitKzt, currency)))) : ""
   );
   const [busy, setBusy] = useState(false);
+
+  useEscape(onClose);
 
   if (!open) return null;
 

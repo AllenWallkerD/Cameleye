@@ -5,6 +5,7 @@ import { useApp } from "./app-provider";
 import { Icon } from "./icons";
 import { DatePicker, MIN_PICKABLE_DATE, todayISO } from "./date-picker";
 import { CURRENCIES, formatMoney, groupAmountInput, parseAmountInput } from "@/lib/currency";
+import { useEscape } from "@/lib/use-escape";
 import type { Goal } from "@/lib/data";
 
 export function ContributeDrawer({
@@ -18,6 +19,8 @@ export function ContributeDrawer({
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(todayISO);
   const [busy, setBusy] = useState(false);
+
+  useEscape(onClose);
 
   if (!goal) return null;
 

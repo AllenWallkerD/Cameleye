@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useApp } from "./app-provider";
 import { Icon } from "./icons";
 import { CURRENCIES, convert, groupAmountInput, parseAmountInput } from "@/lib/currency";
+import { useEscape } from "@/lib/use-escape";
 import { GOAL_SUGGESTIONS, type Goal } from "@/lib/data";
 
 export function AddGoalDrawer({
@@ -26,6 +27,8 @@ export function AddGoalDrawer({
     editing ? groupAmountInput(String(convert(editing.savedKzt, currency))) : ""
   );
   const [busy, setBusy] = useState(false);
+
+  useEscape(onClose);
 
   if (!open) return null;
 

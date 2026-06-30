@@ -5,6 +5,7 @@ import { useApp } from "./app-provider";
 import { Icon } from "./icons";
 import { CategoryIcon } from "./category-icons";
 import { CURRENCIES, convert, groupAmountInput, parseAmountInput } from "@/lib/currency";
+import { useEscape } from "@/lib/use-escape";
 import type { CatType, Recurring } from "@/lib/data";
 
 export function RecurringDrawer({
@@ -31,6 +32,8 @@ export function RecurringDrawer({
   useEffect(() => {
     if (!cats.some((c) => c.id === category)) setCategory(cats[0]?.id ?? "");
   }, [cats, category]);
+
+  useEscape(onClose);
 
   if (!open) return null;
 
