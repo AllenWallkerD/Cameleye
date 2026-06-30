@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useApp } from "@/components/app-provider";
 import { Icon } from "@/components/icons";
 import { CategoryIcon } from "@/components/category-icons";
@@ -10,14 +10,16 @@ import { InstallButton } from "@/components/install-button";
 import { LOCALES, type Locale } from "@/lib/i18n";
 import { CURRENCIES, formatMoney, type CurrencyCode } from "@/lib/currency";
 import { exportTransactionsCSV } from "@/lib/export";
+import { parseTransactionsCSV } from "@/lib/import";
 import type { CategoryMeta, Recurring } from "@/lib/data";
 
 export default function SettingsPage() {
   const {
     t, locale, setLocale, currency, setCurrency, theme, toggleTheme,
     displayName, email, categories, categoryById, removeCategory,
-    recurring, removeRecurring, transactions, updatePassword, confirm, signOut,
+    recurring, removeRecurring, transactions, updatePassword, importTransactions, toast, confirm, signOut,
   } = useApp();
+  const fileRef = useRef<HTMLInputElement>(null);
   const [catOpen, setCatOpen] = useState(false);
   const [editing, setEditing] = useState<CategoryMeta | null>(null);
   const [recOpen, setRecOpen] = useState(false);
@@ -36,6 +38,19 @@ export default function SettingsPage() {
         note: x.note,
       }));
     exportTransactionsCSV(rows);
+  }
+
+  async function importCsv(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const rows = parseTransactionsCSV(await file.text(), categories);
+      if (rows.length) await importTransactions(rows);
+      else toast(t("import.invalid"), "err");
+    } catch {
+      toast(t("import.invalid"), "err");
+    }
   }
 
   async function changePassword() {
@@ -220,16 +235,26 @@ export default function SettingsPage() {
         </ul>
       </section>
 
-      {/* data export */}
+      {/* data import / export */}
       <Card title={t("export.title")}>
-        <button
-          onClick={exportCsv}
-          disabled={transactions.length === 0}
-          className="flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm font-medium text-fg-muted transition-colors hover:text-fg disabled:opacity-50"
-        >
-          <Icon.download width={16} height={16} />
-          {t("export.csv")}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={exportCsv}
+            disabled={transactions.length === 0}
+            className="flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm font-medium text-fg-muted transition-colors hover:text-fg disabled:opacity-50"
+          >
+            <Icon.download width={16} height={16} />
+            {t("export.csv")}
+          </button>
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm font-medium text-fg-muted transition-colors hover:text-fg"
+          >
+            <Icon.upload width={16} height={16} />
+            {t("import.csv")}
+          </button>
+          <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={importCsv} />
+        </div>
       </Card>
 
       {/* security — change password */}

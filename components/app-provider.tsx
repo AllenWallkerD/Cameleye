@@ -103,6 +103,7 @@ type Ctx = {
   updateTransaction: (id: string, patch: NewTx) => Promise<void>;
   removeTransaction: (id: string) => Promise<void>;
   removeTransactions: (ids: string[]) => Promise<void>;
+  importTransactions: (rows: NewTx[]) => Promise<void>;
   addGoal: (g: NewGoal) => Promise<void>;
   updateGoal: (id: string, patch: NewGoal) => Promise<void>;
   removeGoal: (id: string) => Promise<void>;
@@ -528,7 +529,50 @@ export function AppProvider({ children }: { children: ReactNode }) {
             a.date < b.date ? 1 : -1
           )
         );
-        toast(t("toast.added"));
+        // proactive nudge: did this push the category over its budget?
+        let warned = false;
+        if (tx.type === "expense") {
+          const b = budgets.find((x) => x.category === tx.category);
+          if (b) {
+            const ym = tx.date.slice(0, 7);
+            const spent =
+              transactions
+                .filter((x) => x.type === "expense" && x.category === tx.category && x.date.slice(0, 7) === ym)
+                .reduce((s, x) => s + x.amountKzt, 0) + tx.amountKzt;
+            if (spent > b.limitKzt) {
+              toast(`${categoryById(tx.category).name} · ${t("alert.over")}`, "err");
+              warned = true;
+            }
+          }
+        }
+        if (!warned) toast(t("toast.added"));
+      } else {
+        toast(t("toast.error"), "err");
+      }
+    },
+    [supabase, userId, toast, t, budgets, transactions, categoryById]
+  );
+
+  const importTransactions = useCallback(
+    async (rows: NewTx[]) => {
+      if (!userId || rows.length === 0) return;
+      const payload = rows.map((r) => ({
+        user_id: userId,
+        type: r.type,
+        category: r.category,
+        amount_kzt: r.amountKzt,
+        note: r.note,
+        occurred_on: r.date,
+      }));
+      const { data, error } = await supabase
+        .from("transactions")
+        .insert(payload)
+        .select("id,type,category,amount_kzt,note,occurred_on");
+      if (!error && data) {
+        setTransactions((prev) =>
+          [...data.map(rowToTransaction), ...prev].sort((a, b) => (a.date < b.date ? 1 : -1))
+        );
+        toast(`${data.length} ${t("import.imported")}`);
       } else {
         toast(t("toast.error"), "err");
       }
@@ -730,6 +774,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateTransaction,
     removeTransaction,
     removeTransactions,
+    importTransactions,
     addGoal,
     updateGoal,
     removeGoal,

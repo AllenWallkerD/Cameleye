@@ -64,6 +64,12 @@ export const Icon = {
       <path d="M5 21h14" />
     </svg>
   ),
+  upload: (p: SVGProps<SVGSVGElement>) => (
+    <svg {...base} {...p}>
+      <path d="M12 15V3M7 8l5-5 5 5" />
+      <path d="M5 21h14" />
+    </svg>
+  ),
   lock: (p: SVGProps<SVGSVGElement>) => (
     <svg {...base} {...p}>
       <rect x="4" y="10" width="16" height="11" rx="2" />
