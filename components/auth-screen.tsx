@@ -53,7 +53,7 @@ export function AuthScreen() {
   }
 
   return (
-    <div className="relative grid min-h-screen place-items-center px-4">
+    <main className="relative grid min-h-screen place-items-center px-4">
       {/* top-right: language + theme */}
       <div className="absolute right-4 top-4 flex items-center gap-2">
         <div className="flex items-center rounded-xl border bg-card p-0.5">
@@ -71,6 +71,7 @@ export function AuthScreen() {
         </div>
         <button
           onClick={toggleTheme}
+          aria-label={t("theme")}
           className="grid h-9 w-9 place-items-center rounded-xl border bg-card text-fg-muted hover:text-fg"
         >
           {theme === "light" ? <Icon.moon width={17} height={17} /> : <Icon.sun width={17} height={17} />}
@@ -159,7 +160,7 @@ export function AuthScreen() {
           </button>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
 
