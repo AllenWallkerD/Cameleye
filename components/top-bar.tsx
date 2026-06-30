@@ -9,7 +9,7 @@ import { LOCALES, type Locale } from "@/lib/i18n";
 import { CURRENCIES, type CurrencyCode } from "@/lib/currency";
 
 export function TopBar() {
-  const { t, locale, setLocale, currency, setCurrency, theme, toggleTheme, email, displayName, search, setSearch, openAddTransaction, signOut } =
+  const { t, locale, setLocale, currency, setCurrency, theme, toggleTheme, email, displayName, search, setSearch, openAddTransaction, canInstall, promptInstall, signOut } =
     useApp();
   const router = useRouter();
   const [menu, setMenu] = useState(false);
@@ -62,6 +62,18 @@ export function TopBar() {
           }))}
         />
       </div>
+
+      {/* install app — only when installable (Android / desktop Chrome) */}
+      {canInstall && (
+        <button
+          onClick={promptInstall}
+          className="grad-accent flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-white shadow-sm shadow-accent/30 transition-opacity hover:opacity-90"
+          aria-label={t("pwa.install")}
+        >
+          <Icon.download width={17} height={17} />
+          <span className="hidden sm:inline">{t("pwa.install")}</span>
+        </button>
+      )}
 
       {/* theme — always */}
       <button

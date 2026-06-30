@@ -38,6 +38,11 @@ import { Toaster, ConfirmDialog, type Toast, type ConfirmState } from "./feedbac
 
 type Theme = "light" | "dark";
 
+type InstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+};
+
 type NewTx = {
   date: string;
   category: string;
@@ -76,6 +81,8 @@ type Ctx = {
   addTxOpen: boolean;
   openAddTransaction: () => void;
   closeAddTransaction: () => void;
+  canInstall: boolean;
+  promptInstall: () => Promise<void>;
   search: string;
   setSearch: (s: string) => void;
   toast: (text: string, kind?: "ok" | "err") => void;
@@ -151,6 +158,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [addTxOpen, setAddTxOpen] = useState(false);
   const openAddTransaction = useCallback(() => setAddTxOpen(true), []);
   const closeAddTransaction = useCallback(() => setAddTxOpen(false), []);
+
+  // PWA install prompt (Android / desktop Chrome fire `beforeinstallprompt`)
+  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
+  useEffect(() => {
+    const onPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e as InstallPromptEvent);
+    };
+    const onInstalled = () => setInstallPrompt(null);
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onPrompt);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+  const promptInstall = useCallback(async () => {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  }, [installPrompt]);
 
   // toasts + confirm dialog (custom, no system dialogs)
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -679,6 +708,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addTxOpen,
     openAddTransaction,
     closeAddTransaction,
+    canInstall: !!installPrompt,
+    promptInstall,
     search,
     setSearch,
     toast,
