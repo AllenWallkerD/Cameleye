@@ -96,12 +96,10 @@ button:not(:disabled):active {
   transform: scale(0.96);
 }
 
-/* visible keyboard focus for everyone navigating without a mouse */
+/* visible keyboard focus for buttons/links (inputs show focus via their own
+   accent border, so they keep outline-none to avoid a misaligned double-ring) */
 a:focus-visible,
 button:focus-visible,
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible,
 [role="button"]:focus-visible,
 [tabindex]:focus-visible {
   outline: 2px solid var(--accent);
