@@ -8,17 +8,41 @@ import { AddCategoryDrawer } from "@/components/add-category-drawer";
 import { RecurringDrawer } from "@/components/recurring-drawer";
 import { LOCALES, type Locale } from "@/lib/i18n";
 import { CURRENCIES, formatMoney, type CurrencyCode } from "@/lib/currency";
+import { exportTransactionsCSV } from "@/lib/export";
 import type { CategoryMeta } from "@/lib/data";
 
 export default function SettingsPage() {
   const {
     t, locale, setLocale, currency, setCurrency, theme, toggleTheme,
     displayName, email, categories, categoryById, removeCategory,
-    recurring, removeRecurring, confirm, signOut,
+    recurring, removeRecurring, transactions, updatePassword, confirm, signOut,
   } = useApp();
   const [catOpen, setCatOpen] = useState(false);
   const [editing, setEditing] = useState<CategoryMeta | null>(null);
   const [recOpen, setRecOpen] = useState(false);
+  const [pw, setPw] = useState("");
+  const [pwBusy, setPwBusy] = useState(false);
+
+  function exportCsv() {
+    const rows = [...transactions]
+      .sort((a, b) => (a.date < b.date ? 1 : -1))
+      .map((x) => ({
+        date: x.date,
+        type: x.type,
+        categoryName: categoryById(x.category).name,
+        amountKzt: x.amountKzt,
+        note: x.note,
+      }));
+    exportTransactionsCSV(rows);
+  }
+
+  async function changePassword() {
+    if (pw.length < 6) return;
+    setPwBusy(true);
+    const ok = await updatePassword(pw);
+    setPwBusy(false);
+    if (ok) setPw("");
+  }
 
   const custom = categories.filter((c) => c.custom);
   const builtin = categories.filter((c) => !c.custom);
@@ -184,6 +208,42 @@ export default function SettingsPage() {
           ))}
         </ul>
       </section>
+
+      {/* data export */}
+      <Card title={t("export.title")}>
+        <button
+          onClick={exportCsv}
+          disabled={transactions.length === 0}
+          className="flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm font-medium text-fg-muted transition-colors hover:text-fg disabled:opacity-50"
+        >
+          <Icon.download width={16} height={16} />
+          {t("export.csv")}
+        </button>
+      </Card>
+
+      {/* security — change password */}
+      <Card title={t("pw.title")}>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-1 items-center rounded-xl border bg-card px-3 focus-within:border-accent">
+            <Icon.lock width={16} height={16} className="text-fg-muted" />
+            <input
+              type="password"
+              value={pw}
+              minLength={6}
+              onChange={(e) => setPw(e.target.value)}
+              placeholder={t("pw.new")}
+              className="w-full bg-transparent px-2 py-2.5 text-sm outline-none"
+            />
+          </div>
+          <button
+            onClick={changePassword}
+            disabled={pw.length < 6 || pwBusy}
+            className="grad-accent rounded-xl px-3.5 py-2.5 text-sm font-medium text-white shadow-sm shadow-accent/30 hover:opacity-90 disabled:opacity-50"
+          >
+            {pwBusy ? "…" : t("pw.change")}
+          </button>
+        </div>
+      </Card>
 
       <button
         onClick={signOut}

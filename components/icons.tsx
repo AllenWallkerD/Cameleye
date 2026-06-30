@@ -52,6 +52,24 @@ export const Icon = {
       <path d="M14 3.3A9 9 0 0 1 20.7 10H14Z" />
     </svg>
   ),
+  trend: (p: SVGProps<SVGSVGElement>) => (
+    <svg {...base} {...p}>
+      <path d="M3 17l5-5 4 4 8-8" />
+      <path d="M16 8h4v4" />
+    </svg>
+  ),
+  download: (p: SVGProps<SVGSVGElement>) => (
+    <svg {...base} {...p}>
+      <path d="M12 3v12M7 10l5 5 5-5" />
+      <path d="M5 21h14" />
+    </svg>
+  ),
+  lock: (p: SVGProps<SVGSVGElement>) => (
+    <svg {...base} {...p}>
+      <rect x="4" y="10" width="16" height="11" rx="2" />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+    </svg>
+  ),
   chart: (p: SVGProps<SVGSVGElement>) => (
     <svg {...base} {...p}>
       <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />

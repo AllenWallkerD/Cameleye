@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useApp } from "./app-provider";
-import { NAV } from "./nav-items";
+import { BOTTOM_NAV } from "./nav-items";
 
 // Mobile-only bottom tab bar (native app feel).
 export function BottomNav() {
@@ -13,7 +13,7 @@ export function BottomNav() {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/90 backdrop-blur-lg lg:hidden">
       <div className="mx-auto flex max-w-md items-stretch justify-around px-1 pb-[env(safe-area-inset-bottom)]">
-        {NAV.map(({ key, icon: I, href }) => {
+        {BOTTOM_NAV.map(({ key, icon: I, href }) => {
           const active = pathname === href;
           return (
             <Link

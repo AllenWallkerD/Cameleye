@@ -72,6 +72,7 @@ type Ctx = {
   email: string | undefined;
   displayName: string | undefined;
   signOut: () => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<boolean>;
   addTxOpen: boolean;
   openAddTransaction: () => void;
   closeAddTransaction: () => void;
@@ -631,6 +632,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   }, [supabase]);
 
+  const updatePassword = useCallback(
+    async (newPassword: string) => {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      toast(error ? t("toast.error") : t("toast.updated"), error ? "err" : "ok");
+      return !error;
+    },
+    [supabase, toast, t]
+  );
+
   const value: Ctx = {
     locale,
     setLocale,
@@ -646,6 +656,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       (session?.user?.user_metadata?.name as string | undefined) ||
       session?.user?.email?.split("@")[0],
     signOut,
+    updatePassword,
     addTxOpen,
     openAddTransaction,
     closeAddTransaction,

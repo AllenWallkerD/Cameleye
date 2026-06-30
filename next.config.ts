@@ -5,8 +5,6 @@ const nextConfig: NextConfig = {
   turbopack: { root: import.meta.dirname },
   // hide the floating Next.js dev-tools indicator in the corner
   devIndicators: false,
-  // allow testing the dev server from a phone on the LAN (cross-origin)
-  allowedDevOrigins: ["172.16.150.68"],
 };
 
 export default nextConfig;

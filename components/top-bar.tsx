@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp } from "./app-provider";
 import { Icon } from "./icons";
@@ -93,7 +94,15 @@ export function TopBar() {
             <div className="fixed inset-0 z-10" onClick={() => setMenu(false)} />
             <div className="absolute right-0 z-20 mt-2 w-56 rounded-xl border bg-card p-1.5 shadow-lg">
               {displayName && <p className="truncate px-2.5 pt-1.5 text-sm font-medium">{displayName}</p>}
-              <p className="truncate px-2.5 pb-1.5 text-xs text-fg-muted">{email}</p>
+              <p className="truncate border-b px-2.5 pb-2 pt-0.5 text-xs text-fg-muted">{email}</p>
+              <Link
+                href="/settings"
+                onClick={() => setMenu(false)}
+                className="mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-fg-muted transition-colors hover:bg-bg-subtle hover:text-fg"
+              >
+                <Icon.settings width={16} height={16} />
+                {t("nav.settings")}
+              </Link>
               <button
                 onClick={() => {
                   setMenu(false);
