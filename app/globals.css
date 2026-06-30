@@ -69,6 +69,33 @@
   border-color: var(--border);
 }
 
+/* Tailwind v4 no longer sets pointer on buttons — restore it, and give every
+   button a subtle, consistent hover + press micro-interaction. */
+button:not(:disabled),
+[role="button"]:not(:disabled),
+summary,
+label:has(> input[type="file"]) {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+button {
+  transition:
+    transform 0.14s ease,
+    filter 0.14s ease,
+    opacity 0.14s ease,
+    background-color 0.14s ease,
+    border-color 0.14s ease,
+    color 0.14s ease;
+}
+button:not(:disabled):hover {
+  filter: brightness(1.06);
+}
+button:not(:disabled):active {
+  transform: scale(0.96);
+}
+
 body {
   background: var(--bg);
   color: var(--fg);
