@@ -104,8 +104,8 @@ export default function DashboardPage() {
 
         <section className="rounded-2xl border bg-card p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-2">
-            <h2 className="font-semibold">{t("chart.byCategory")}</h2>
-            <span className="truncate text-xs text-fg-muted">{periodLabel}</span>
+            <h2 className="truncate font-semibold">{t("chart.byCategory")}</h2>
+            <span className="shrink-0 text-xs text-fg-muted">{periodLabel}</span>
           </div>
           {donutData.length ? (
             <DonutChart data={donutData} currency={currency} />

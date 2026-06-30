@@ -31,8 +31,8 @@ export function DonutChart({
   const focus = hover !== null ? arcs[hover] : null;
 
   return (
-    <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
-      <svg viewBox="0 0 200 200" className="h-44 w-44 shrink-0">
+    <div className="@container flex flex-col items-center gap-4">
+      <svg viewBox="0 0 200 200" className="h-40 w-40 shrink-0">
         {arcs.map((a) => (
           <path
             key={a.label}
@@ -54,16 +54,16 @@ export function DonutChart({
         </text>
       </svg>
 
-      <ul className="grid w-full grid-cols-2 gap-1.5 text-sm sm:grid-cols-1">
+      <ul className="grid w-full grid-cols-1 gap-1.5 text-sm @xs:grid-cols-2">
         {arcs.map((a) => (
           <li
             key={a.label}
-            className="flex items-center justify-between gap-3 rounded-lg px-2 py-1 transition-colors"
+            className="flex items-center justify-between gap-2 rounded-lg px-2 py-1 transition-colors"
             style={{ background: hover === a.i ? "var(--bg-subtle)" : "transparent" }}
             onMouseEnter={() => setHover(a.i)}
             onMouseLeave={() => setHover(null)}
           >
-            <span className="flex items-center gap-2 truncate">
+            <span className="flex min-w-0 flex-1 items-center gap-2">
               <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: a.color }} />
               <span className="truncate text-fg-muted">{a.label}</span>
             </span>

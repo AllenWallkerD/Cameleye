@@ -6,6 +6,7 @@ import { Icon } from "@/components/icons";
 import { CategoryIcon } from "@/components/category-icons";
 import { AddCategoryDrawer } from "@/components/add-category-drawer";
 import { RecurringDrawer } from "@/components/recurring-drawer";
+import { InstallButton } from "@/components/install-button";
 import { LOCALES, type Locale } from "@/lib/i18n";
 import { CURRENCIES, formatMoney, type CurrencyCode } from "@/lib/currency";
 import { exportTransactionsCSV } from "@/lib/export";
@@ -60,6 +61,8 @@ export default function SettingsPage() {
   return (
     <>
       <h1 className="text-2xl font-semibold tracking-tight">{t("nav.settings")}</h1>
+
+      <InstallButton />
 
       {/* profile */}
       <Card title={t("settings.account")}>
