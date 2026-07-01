@@ -15,10 +15,13 @@ export default function InsightsPage() {
   const { t, locale, currency, transactions, categoryById, loadingData } = useApp();
   const [period, setPeriod] = useState<Period>(() => ({ mode: "month", ym: currentYM() }));
 
-  const prevPeriod: Period =
-    period.mode === "month"
-      ? { mode: "month", ym: shiftYM(period.ym, -1) }
-      : { mode: "year", y: period.y - 1 };
+  const prevPeriod = useMemo<Period>(
+    () =>
+      period.mode === "month"
+        ? { mode: "month", ym: shiftYM(period.ym, -1) }
+        : { mode: "year", y: period.y - 1 },
+    [period]
+  );
 
   const cur = useMemo(() => totalsFor(transactions, period), [transactions, period]);
   const prev = useMemo(() => totalsFor(transactions, prevPeriod), [transactions, prevPeriod]);

@@ -19,12 +19,13 @@ export function DonutChart({
   const cx = 100;
   const cy = 100;
 
-  let angle = -Math.PI / 2;
+  // cumulative fraction → arc angles (no mutation during render)
+  const START = -Math.PI / 2;
   const arcs = data.map((d, i) => {
     const frac = d.value / total;
-    const start = angle;
-    const end = angle + frac * Math.PI * 2;
-    angle = end;
+    const before = data.slice(0, i).reduce((s, x) => s + x.value, 0) / total;
+    const start = START + before * Math.PI * 2;
+    const end = start + frac * Math.PI * 2;
     return { ...d, start, end, frac, i };
   });
 

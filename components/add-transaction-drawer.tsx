@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useApp } from "./app-provider";
 import { Icon } from "./icons";
 import { CategoryIcon } from "./category-icons";
@@ -20,8 +20,11 @@ export function AddTransactionDrawer({
   editing?: Transaction | null;
 }) {
   const { t, currency, categories, addTransaction, updateTransaction } = useApp();
+  const firstOfType = (ty: CatType) => categories.find((c) => c.type === ty)?.id ?? "";
   const [type, setType] = useState<CatType>(editing?.type ?? "expense");
-  const [category, setCategory] = useState<string>(editing?.category ?? "");
+  const [category, setCategory] = useState<string>(
+    editing?.category ?? firstOfType(editing?.type ?? "expense")
+  );
   const [amount, setAmount] = useState(
     editing ? groupAmountInput(String(convert(editing.amountKzt, currency))) : ""
   );
@@ -32,12 +35,11 @@ export function AddTransactionDrawer({
 
   const cats = categories.filter((c) => c.type === type);
 
-  // keep a valid selection whenever the type or category list changes
-  useEffect(() => {
-    if (!cats.some((c) => c.id === category)) {
-      setCategory(cats[0]?.id ?? "");
-    }
-  }, [cats, category]);
+  // switching type also picks a valid category for it (no effect needed)
+  function selectType(ty: CatType) {
+    setType(ty);
+    setCategory(firstOfType(ty));
+  }
 
   const panelRef = useModal(open, onClose);
 
@@ -79,7 +81,7 @@ export function AddTransactionDrawer({
             {(["expense", "income"] as const).map((ty) => (
               <button
                 key={ty}
-                onClick={() => setType(ty)}
+                onClick={() => selectType(ty)}
                 className={`rounded-lg py-2 text-sm font-medium transition-colors ${
                   type === ty ? "bg-accent text-white" : "text-fg-muted hover:text-fg"
                 }`}

@@ -219,24 +219,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [locale]);
   useEffect(() => writePref("cameleye.currency", currency), [currency]);
 
-  // show the quick guide once, on a user's very first authenticated visit
-  useEffect(() => {
-    if (!session) return;
-    if (readPref("cameleye.guided", ["1"], "") === "1") return;
-    setHelpOpen(true);
-    writePref("cameleye.guided", "1");
-  }, [session]);
-
-  // auth bootstrap + subscription
+  // auth bootstrap + subscription. Also shows the quick guide once, on a user's
+  // very first authenticated visit (tracked in localStorage).
   useEffect(() => {
     let active = true;
+    const maybeGuide = (hasSession: boolean) => {
+      if (!hasSession) return;
+      if (readPref("cameleye.guided", ["1"], "") === "1") return;
+      setHelpOpen(true);
+      writePref("cameleye.guided", "1");
+    };
     supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
       setSession(data.session);
       setAuthReady(true);
+      maybeGuide(!!data.session);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s);
+      maybeGuide(!!s);
     });
     return () => {
       active = false;
@@ -247,17 +248,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // load the signed-in user's data
   const userId = session?.user?.id;
   useEffect(() => {
-    if (!userId) {
-      setTransactions([]);
-      setGoals([]);
-      setCustomCats([]);
-      setBudgets([]);
-      setRecurring([]);
-      return;
-    }
     let active = true;
-    setLoadingData(true);
     (async () => {
+      if (!userId) {
+        // signed out — clear everything (inside the async body so it isn't a
+        // synchronous setState in the effect itself)
+        if (active) {
+          setTransactions([]);
+          setGoals([]);
+          setCustomCats([]);
+          setBudgets([]);
+          setRecurring([]);
+        }
+        return;
+      }
+      setLoadingData(true);
       const [tx, gl, ct, bd, rc] = await Promise.all([
         supabase
           .from("transactions")

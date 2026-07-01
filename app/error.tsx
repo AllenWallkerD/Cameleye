@@ -39,12 +39,15 @@ export default function Error({
           >
             {t("err.retry")}
           </button>
-          <a
-            href="/"
+          <button
+            onClick={() => {
+              // hard navigation: fully resets app state after a crash
+              window.location.href = "/";
+            }}
             className="rounded-xl border px-4 py-2.5 text-sm font-medium text-fg-muted transition-colors hover:text-fg"
           >
             {t("err.home")}
-          </a>
+          </button>
         </div>
       </div>
     </div>
