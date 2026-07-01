@@ -12,6 +12,13 @@ const base = {
 };
 
 export const Icon = {
+  help: (p: SVGProps<SVGSVGElement>) => (
+    <svg {...base} {...p}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.2 9a2.8 2.8 0 0 1 5.5.8c0 1.9-2.7 2.5-2.7 4" />
+      <circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none" />
+    </svg>
+  ),
   grid: (p: SVGProps<SVGSVGElement>) => (
     <svg {...base} {...p}>
       <rect x="3" y="3" width="7" height="7" rx="1.5" />

@@ -5,7 +5,7 @@ import { useApp } from "./app-provider";
 import { Icon } from "./icons";
 import { DatePicker, MIN_PICKABLE_DATE, todayISO } from "./date-picker";
 import { CURRENCIES, formatMoney, groupAmountInput, parseAmountInput } from "@/lib/currency";
-import { useEscape } from "@/lib/use-escape";
+import { useModal } from "@/lib/use-modal";
 import type { Goal } from "@/lib/data";
 
 export function ContributeDrawer({
@@ -20,7 +20,7 @@ export function ContributeDrawer({
   const [date, setDate] = useState(todayISO);
   const [busy, setBusy] = useState(false);
 
-  useEscape(onClose);
+  const panelRef = useModal(!!goal, onClose);
 
   if (!goal) return null;
 
@@ -41,7 +41,12 @@ export function ContributeDrawer({
     <div className="fixed inset-0 z-[60] flex justify-end">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="animate-fade-up relative flex h-full w-full max-w-md flex-col bg-card shadow-2xl">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        className="animate-fade-up relative flex h-full w-full max-w-md flex-col bg-card shadow-2xl"
+      >
         <div className="flex items-center justify-between border-b px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold">{t("goals.addMoney")}</h2>

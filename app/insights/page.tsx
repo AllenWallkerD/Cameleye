@@ -58,10 +58,24 @@ export default function InsightsPage() {
       .map(([id, value]) => ({ cat: categoryById(id), value, share: (value / totalExp) * 100 }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 5);
-    const days = period.mode === "month" ? daysInMonthYM(period.ym) : 365;
-    return { list, biggest, count, avgDaily: cur.expenses / days };
+    // divide by days *elapsed* so the current month/year isn't understated
+    const now = new Date();
+    let days: number;
+    if (period.mode === "month") {
+      days = period.ym === currentYM() ? now.getDate() : daysInMonthYM(period.ym);
+    } else {
+      const leap = (period.y % 4 === 0 && period.y % 100 !== 0) || period.y % 400 === 0;
+      days =
+        period.y === now.getFullYear()
+          ? Math.round((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000)
+          : leap
+          ? 366
+          : 365;
+    }
+    return { list, biggest, count, avgDaily: cur.expenses / Math.max(1, days) };
   }, [transactions, period, categoryById, cur.expenses]);
 
+  const vsLabel = t(period.mode === "year" ? "vsPrevYear" : "vsPrev");
   const empty = transactions.length === 0;
 
   return (
@@ -84,9 +98,9 @@ export default function InsightsPage() {
         <>
           {/* comparison vs previous period */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <CompareCard label={t("summary.income")} value={cur.income} prev={prev.income} positiveIsGood currency={currency} t={t} />
-            <CompareCard label={t("summary.expenses")} value={cur.expenses} prev={prev.expenses} currency={currency} t={t} />
-            <CompareCard label={t("summary.balance")} value={cur.balance} prev={prev.balance} positiveIsGood currency={currency} t={t} />
+            <CompareCard label={t("summary.income")} value={cur.income} prev={prev.income} positiveIsGood currency={currency} vsLabel={vsLabel} />
+            <CompareCard label={t("summary.expenses")} value={cur.expenses} prev={prev.expenses} currency={currency} vsLabel={vsLabel} />
+            <CompareCard label={t("summary.balance")} value={cur.balance} prev={prev.balance} positiveIsGood currency={currency} vsLabel={vsLabel} />
           </div>
 
           {/* trend */}
@@ -159,14 +173,14 @@ function CompareCard({
   prev,
   positiveIsGood = false,
   currency,
-  t,
+  vsLabel,
 }: {
   label: string;
   value: number;
   prev: number;
   positiveIsGood?: boolean;
   currency: Parameters<typeof formatMoney>[1];
-  t: (k: string) => string;
+  vsLabel: string;
 }) {
   const delta = prev ? ((value - prev) / Math.abs(prev)) * 100 : 0;
   const up = delta >= 0;
@@ -177,7 +191,7 @@ function CompareCard({
       <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">{formatMoney(value, currency)}</p>
       {prev > 0 || value > 0 ? (
         <p className="mt-1 text-xs" style={{ color: good ? "var(--pos)" : "var(--neg)" }}>
-          {up ? "▲" : "▼"} {Math.abs(delta).toFixed(0)}% <span className="text-fg-muted">{t("vsPrev")}</span>
+          {up ? "▲" : "▼"} {Math.abs(delta).toFixed(0)}% <span className="text-fg-muted">{vsLabel}</span>
         </p>
       ) : (
         <p className="mt-1 text-xs text-fg-muted">—</p>

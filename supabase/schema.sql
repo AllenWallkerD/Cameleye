@@ -1,4 +1,4 @@
--- Botaköz — database schema + Row Level Security
+-- Cameleye — database schema + Row Level Security
 -- Paste this whole file into Supabase → SQL Editor → New query → Run.
 -- Safe to re-run: it drops and recreates the objects it owns.
 
@@ -20,7 +20,7 @@ create table if not exists public.transactions (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid not null references auth.users (id) on delete cascade,
   type        text not null check (type in ('income', 'expense')),
-  category    text not null,                    -- income | kaspi | rent | utilities | tariff | road | debts | other
+  category    text not null,                    -- category id: a default slug (groceries, rent, savings…) or a custom-category uuid
   amount_kzt  numeric(14, 2) not null check (amount_kzt >= 0),
   note        text not null default '',
   occurred_on date not null,
@@ -31,13 +31,19 @@ create table if not exists public.transactions (
 create table if not exists public.goals (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid not null references auth.users (id) on delete cascade,
-  key         text not null,                    -- kaspi | downpayment | teeth | chinese | <custom>
+  key         text not null,                    -- installments | downpayment | teeth | chinese | <custom>
   title       text,
   target_kzt  numeric(14, 2) not null check (target_kzt >= 0),
   saved_kzt   numeric(14, 2) not null default 0 check (saved_kzt >= 0),
   color       text not null default '#a78bfa',
   created_at  timestamptz not null default now()
 );
+
+-- Link a transaction to the goal it contributes to (a "savings" expense).
+-- ON DELETE SET NULL: deleting a goal keeps its contributions in history,
+-- just unlinked. Declared here because it references goals (created above).
+alter table public.transactions
+  add column if not exists goal_id uuid references public.goals (id) on delete set null;
 
 -- User-created categories (defaults live in code; these are the custom ones).
 create table if not exists public.categories (
@@ -117,7 +123,7 @@ create policy "own categories" on public.categories
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- ──────────────────────────────────────────────────────────────
--- 3. On signup: auto-create the profile and seed the 4 big goals
+-- 3. On signup: auto-create the profile (blank slate — no seeded data)
 -- ──────────────────────────────────────────────────────────────
 -- On signup: create ONLY the profile. No seeded goals/transactions —
 -- every user starts with a blank slate and adds their own.

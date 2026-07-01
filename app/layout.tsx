@@ -12,7 +12,6 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Cameleye — An eye on your money",
   description: "Personal finance tracker · income, expenses, goals",
-  manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "Cameleye", statusBarStyle: "default" },
   icons: { icon: "/icon.svg", apple: "/apple-touch-icon.png" },
 };
@@ -25,7 +24,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} h-full`} suppressHydrationWarning>
+    <html lang="ru" className={`${inter.variable} h-full`} suppressHydrationWarning>
       <body className="min-h-full">
         <script
           dangerouslySetInnerHTML={{

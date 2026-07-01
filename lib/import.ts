@@ -43,24 +43,34 @@ function parseCSV(text: string): string[][] {
 
 const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s.trim());
 
-// Columns expected (same as the export): Date, Type, Category, Amount (KZT), Note
+// Columns expected (same as the export):
+// Date, Type, Category, Amount (KZT), Note, Category ID (optional, last)
 export function parseTransactionsCSV(text: string, categories: CategoryMeta[]): ParsedTx[] {
   // strip BOM
   const rows = parseCSV(text.replace(/^﻿/, ""));
   const byName = new Map(categories.map((c) => [c.name.trim().toLowerCase(), c.id]));
   const byId = new Map(categories.map((c) => [c.id.toLowerCase(), c.id]));
+  const typeOf = new Map(categories.map((c) => [c.id, c.type]));
 
   const out: ParsedTx[] = [];
   for (const r of rows) {
     if (!r[0] || !isDate(r[0])) continue; // skip header / blank / bad rows
     const date = r[0].trim();
     const typeRaw = (r[1] ?? "").trim().toLowerCase();
-    const type: CatType =
+    let type: CatType =
       typeRaw.includes("income") || typeRaw.includes("доход") || typeRaw.includes("кіріс")
         ? "income"
         : "expense";
+    // resolve category: stable ID column first (locale-proof), then name
+    const idText = (r[5] ?? "").trim().toLowerCase();
     const catText = (r[2] ?? "").trim().toLowerCase();
-    const category = byName.get(catText) ?? byId.get(catText) ?? "other";
+    let category = byId.get(idText) ?? byName.get(catText);
+    if (category) {
+      // trust the resolved category's own type so the two never contradict
+      type = typeOf.get(category) ?? type;
+    } else {
+      category = type === "income" ? "income_other" : "other";
+    }
     const amountKzt = Math.abs(parseFloat((r[3] ?? "").replace(/[^0-9.-]/g, ""))) || 0;
     const note = (r[4] ?? "").trim();
     if (amountKzt <= 0) continue;

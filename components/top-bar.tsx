@@ -9,7 +9,7 @@ import { LOCALES, type Locale } from "@/lib/i18n";
 import { CURRENCIES, type CurrencyCode } from "@/lib/currency";
 
 export function TopBar() {
-  const { t, locale, setLocale, currency, setCurrency, theme, toggleTheme, email, displayName, search, setSearch, openAddTransaction, canInstall, promptInstall, signOut } =
+  const { t, locale, setLocale, currency, setCurrency, theme, toggleTheme, email, displayName, search, setSearch, openAddTransaction, openHelp, canInstall, promptInstall, signOut } =
     useApp();
   const router = useRouter();
   const [menu, setMenu] = useState(false);
@@ -74,6 +74,15 @@ export function TopBar() {
           <span className="hidden sm:inline">{t("pwa.install")}</span>
         </button>
       )}
+
+      {/* help / guide — always */}
+      <button
+        onClick={openHelp}
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border bg-card text-fg-muted transition-colors hover:text-fg"
+        aria-label={t("help.open")}
+      >
+        <Icon.help width={18} height={18} />
+      </button>
 
       {/* theme — always */}
       <button

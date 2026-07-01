@@ -149,7 +149,7 @@ export default function BudgetsPage() {
       )}
 
       <AddBudgetDrawer
-        key={editCat ?? "new"}
+        key={open ? editCat ?? "new" : "closed"}
         open={open}
         editingCategory={editCat}
         onClose={() => setOpen(false)}

@@ -1,11 +1,13 @@
 // Client-side CSV export of transactions (amounts in the base currency, KZT).
 export function exportTransactionsCSV(
-  rows: { date: string; type: string; categoryName: string; amountKzt: number; note: string }[]
+  rows: { date: string; type: string; categoryName: string; categoryId: string; amountKzt: number; note: string }[]
 ) {
   const esc = (s: string | number) => `"${String(s).replace(/"/g, '""')}"`;
-  const header = ["Date", "Type", "Category", "Amount (KZT)", "Note"];
+  // Category ID (a stable slug/uuid) is appended last so it survives a
+  // round-trip across languages; older exports without it still import by name.
+  const header = ["Date", "Type", "Category", "Amount (KZT)", "Note", "Category ID"];
   const body = rows.map((r) =>
-    [r.date, r.type, esc(r.categoryName), Math.round(r.amountKzt), esc(r.note)].join(",")
+    [r.date, r.type, esc(r.categoryName), Math.round(r.amountKzt), esc(r.note), r.categoryId].join(",")
   );
   const csv = [header.join(","), ...body].join("\n");
 

@@ -5,7 +5,7 @@ import { useApp } from "./app-provider";
 import { Icon } from "./icons";
 
 export function OnboardingCard() {
-  const { t, displayName, openAddTransaction } = useApp();
+  const { t, displayName, openAddTransaction, openHelp } = useApp();
 
   return (
     <section className="animate-fade-up overflow-hidden rounded-2xl border bg-card shadow-sm">
@@ -15,6 +15,13 @@ export function OnboardingCard() {
           {displayName ? `${t("greeting")}, ${displayName}` : t("onb.title")}
         </h1>
         <p className="mt-1 text-sm text-white/80">{t("onb.subtitle")}</p>
+        <button
+          onClick={openHelp}
+          className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-white/15 px-3 py-1.5 text-sm font-medium text-white backdrop-blur transition-colors hover:bg-white/25"
+        >
+          <Icon.help width={15} height={15} />
+          {t("help.open")}
+        </button>
         <span className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
       </div>
 

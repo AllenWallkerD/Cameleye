@@ -10,7 +10,7 @@ import {
   groupAmountInput,
   parseAmountInput,
 } from "@/lib/currency";
-import { useEscape } from "@/lib/use-escape";
+import { useModal } from "@/lib/use-modal";
 
 export function AddBudgetDrawer({
   open,
@@ -38,7 +38,7 @@ export function AddBudgetDrawer({
   );
   const [busy, setBusy] = useState(false);
 
-  useEscape(onClose);
+  const panelRef = useModal(open, onClose);
 
   if (!open) return null;
 
@@ -58,7 +58,12 @@ export function AddBudgetDrawer({
     <div className="fixed inset-0 z-[60] flex justify-end">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="animate-fade-up relative flex h-full w-full max-w-md flex-col bg-card shadow-2xl">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        className="animate-fade-up relative flex h-full w-full max-w-md flex-col bg-card shadow-2xl"
+      >
         <div className="flex items-center justify-between border-b px-6 py-4">
           <h2 className="text-lg font-semibold">{isEdit ? t("edit") : t("budget.new")}</h2>
           <button onClick={onClose} className="rounded-lg p-1.5 text-fg-muted hover:text-fg">

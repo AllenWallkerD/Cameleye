@@ -34,6 +34,7 @@ import {
 import { todayISO } from "./date-picker";
 import { AuthScreen } from "./auth-screen";
 import { AppShell } from "./app-shell";
+import { HelpModal } from "./help-modal";
 import { Toaster, ConfirmDialog, type Toast, type ConfirmState } from "./feedback-ui";
 
 type Theme = "light" | "dark";
@@ -82,6 +83,9 @@ type Ctx = {
   addTxOpen: boolean;
   openAddTransaction: () => void;
   closeAddTransaction: () => void;
+  helpOpen: boolean;
+  openHelp: () => void;
+  closeHelp: () => void;
   canInstall: boolean;
   promptInstall: () => Promise<void>;
   search: string;
@@ -107,7 +111,7 @@ type Ctx = {
   importTransactions: (rows: NewTx[]) => Promise<void>;
   addGoal: (g: NewGoal) => Promise<void>;
   updateGoal: (id: string, patch: NewGoal) => Promise<void>;
-  removeGoal: (id: string) => Promise<void>;
+  removeGoal: (id: string, deleteTransactions?: boolean) => Promise<void>;
   contributeToGoal: (goalId: string, amountKzt: number, date: string) => Promise<void>;
   addCategory: (c: NewCategory) => Promise<CategoryMeta | null>;
   updateCategory: (id: string, patch: NewCategory) => Promise<void>;
@@ -160,6 +164,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [addTxOpen, setAddTxOpen] = useState(false);
   const openAddTransaction = useCallback(() => setAddTxOpen(true), []);
   const closeAddTransaction = useCallback(() => setAddTxOpen(false), []);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const openHelp = useCallback(() => setHelpOpen(true), []);
+  const closeHelp = useCallback(() => setHelpOpen(false), []);
 
   // PWA install prompt (Android / desktop Chrome fire `beforeinstallprompt`)
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
@@ -212,6 +219,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [locale]);
   useEffect(() => writePref("cameleye.currency", currency), [currency]);
 
+  // show the quick guide once, on a user's very first authenticated visit
+  useEffect(() => {
+    if (!session) return;
+    if (readPref("cameleye.guided", ["1"], "") === "1") return;
+    setHelpOpen(true);
+    writePref("cameleye.guided", "1");
+  }, [session]);
+
   // auth bootstrap + subscription
   useEffect(() => {
     let active = true;
@@ -246,7 +261,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const [tx, gl, ct, bd, rc] = await Promise.all([
         supabase
           .from("transactions")
-          .select("id,type,category,amount_kzt,note,occurred_on")
+          .select("id,type,category,amount_kzt,note,occurred_on,goal_id")
           .order("occurred_on", { ascending: false }),
         supabase
           .from("goals")
@@ -301,7 +316,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const ins = await supabase
           .from("transactions")
           .insert(newRows)
-          .select("id,type,category,amount_kzt,note,occurred_on");
+          .select("id,type,category,amount_kzt,note,occurred_on,goal_id");
         generated = (ins.data ?? []).map(rowToTransaction);
       }
 
@@ -393,10 +408,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const removeCategory = useCallback(
     async (id: string) => {
+      // Don't orphan data: move this category's transactions & recurring rules to
+      // a safe default, drop its budget, THEN delete the category itself.
+      const fallback = customCats.find((c) => c.id === id)?.type === "income" ? "income_other" : "other";
       setCustomCats((prev) => prev.filter((x) => x.id !== id));
+      setTransactions((prev) => prev.map((x) => (x.category === id ? { ...x, category: fallback } : x)));
+      setRecurring((prev) => prev.map((r) => (r.category === id ? { ...r, category: fallback } : r)));
+      setBudgets((prev) => prev.filter((b) => b.category !== id));
+      await Promise.all([
+        supabase.from("transactions").update({ category: fallback }).eq("category", id),
+        supabase.from("recurring").update({ category: fallback }).eq("category", id),
+        supabase.from("budgets").delete().eq("category", id),
+      ]);
       await supabase.from("categories").delete().eq("id", id);
     },
-    [supabase]
+    [supabase, customCats]
   );
 
   const setBudget = useCallback(
@@ -467,7 +493,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               note: rule.note,
               occurred_on: date,
             })
-            .select("id,type,category,amount_kzt,note,occurred_on")
+            .select("id,type,category,amount_kzt,note,occurred_on,goal_id")
             .single();
           if (ins.data) {
             setTransactions((prev) =>
@@ -525,7 +551,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           note: tx.note,
           occurred_on: tx.date,
         })
-        .select("id,type,category,amount_kzt,note,occurred_on")
+        .select("id,type,category,amount_kzt,note,occurred_on,goal_id")
         .single();
       if (!error && data) {
         setTransactions((prev) =>
@@ -571,7 +597,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from("transactions")
         .insert(payload)
-        .select("id,type,category,amount_kzt,note,occurred_on");
+        .select("id,type,category,amount_kzt,note,occurred_on,goal_id");
       if (!error && data) {
         setTransactions((prev) =>
           [...data.map(rowToTransaction), ...prev].sort((a, b) => (a.date < b.date ? 1 : -1))
@@ -584,8 +610,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [supabase, userId, toast, t]
   );
 
+  // Keep a goal's saved_kzt in step with its linked transactions (DB + state).
+  const adjustGoalSaved = useCallback(
+    async (goalId: string, delta: number) => {
+      if (!delta) return;
+      const g = goals.find((x) => x.id === goalId);
+      if (!g) return;
+      const newSaved = Math.max(0, g.savedKzt + delta);
+      setGoals((prev) => prev.map((x) => (x.id === goalId ? { ...x, savedKzt: newSaved } : x)));
+      await supabase.from("goals").update({ saved_kzt: newSaved }).eq("id", goalId);
+    },
+    [supabase, goals]
+  );
+
   const updateTransaction = useCallback(
     async (id: string, patch: NewTx) => {
+      const before = transactions.find((x) => x.id === id);
       const { data, error } = await supabase
         .from("transactions")
         .update({
@@ -596,39 +636,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
           occurred_on: patch.date,
         })
         .eq("id", id)
-        .select("id,type,category,amount_kzt,note,occurred_on")
+        .select("id,type,category,amount_kzt,note,occurred_on,goal_id")
         .single();
       if (!error && data) {
         const updated = rowToTransaction(data);
         setTransactions((prev) =>
           prev.map((x) => (x.id === id ? updated : x)).sort((a, b) => (a.date < b.date ? 1 : -1))
         );
+        // if this was a goal contribution and the amount changed, move the goal
+        if (updated.goalId) {
+          await adjustGoalSaved(updated.goalId, updated.amountKzt - (before?.amountKzt ?? 0));
+        }
         toast(t("toast.updated"));
       } else {
         toast(t("toast.error"), "err");
       }
     },
-    [supabase, toast, t]
+    [supabase, toast, t, transactions, adjustGoalSaved]
   );
 
   const removeTransaction = useCallback(
     async (id: string) => {
+      const removed = transactions.find((x) => x.id === id);
       setTransactions((prev) => prev.filter((x) => x.id !== id));
       const { error } = await supabase.from("transactions").delete().eq("id", id);
+      if (!error && removed?.goalId) await adjustGoalSaved(removed.goalId, -removed.amountKzt);
       toast(error ? t("toast.error") : t("toast.deleted"), error ? "err" : "ok");
     },
-    [supabase, toast, t]
+    [supabase, toast, t, transactions, adjustGoalSaved]
   );
 
   const removeTransactions = useCallback(
     async (ids: string[]) => {
       if (ids.length === 0) return;
       const idSet = new Set(ids);
+      // tally how much to walk back per goal before we drop the rows
+      const perGoal = new Map<string, number>();
+      for (const x of transactions) {
+        if (idSet.has(x.id) && x.goalId) {
+          perGoal.set(x.goalId, (perGoal.get(x.goalId) ?? 0) + x.amountKzt);
+        }
+      }
       setTransactions((prev) => prev.filter((x) => !idSet.has(x.id)));
       const { error } = await supabase.from("transactions").delete().in("id", ids);
+      if (!error) {
+        for (const [goalId, amount] of perGoal) await adjustGoalSaved(goalId, -amount);
+      }
       toast(error ? t("toast.error") : t("toast.deleted"), error ? "err" : "ok");
     },
-    [supabase, toast, t]
+    [supabase, toast, t, transactions, adjustGoalSaved]
   );
 
   const addGoal = useCallback(
@@ -658,10 +714,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateGoal = useCallback(
     async (id: string, patch: NewGoal) => {
+      // saved_kzt is intentionally NOT edited here — progress only moves via
+      // contributions (and their deletion), so it always matches transactions.
       setGoals((prev) =>
         prev.map((g) =>
           g.id === id
-            ? { ...g, title: patch.title, targetKzt: patch.targetKzt, savedKzt: patch.savedKzt, color: patch.color }
+            ? { ...g, title: patch.title, targetKzt: patch.targetKzt, color: patch.color }
             : g
         )
       );
@@ -670,7 +728,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .update({
           title: patch.title,
           target_kzt: patch.targetKzt,
-          saved_kzt: patch.savedKzt,
           color: patch.color,
         })
         .eq("id", id);
@@ -680,12 +737,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const removeGoal = useCallback(
-    async (id: string) => {
+    async (id: string, deleteTransactions = false) => {
       setGoals((prev) => prev.filter((x) => x.id !== id));
+      if (deleteTransactions) {
+        // remove the goal's contributions too (that money returns to balance)
+        const ids = transactions.filter((x) => x.goalId === id).map((x) => x.id);
+        if (ids.length) {
+          setTransactions((prev) => prev.filter((x) => x.goalId !== id));
+          await supabase.from("transactions").delete().in("id", ids);
+        }
+      } else {
+        // keep them as history — just unlink locally (DB does ON DELETE SET NULL)
+        setTransactions((prev) => prev.map((x) => (x.goalId === id ? { ...x, goalId: null } : x)));
+      }
       const { error } = await supabase.from("goals").delete().eq("id", id);
       toast(error ? t("toast.error") : t("toast.deleted"), error ? "err" : "ok");
     },
-    [supabase, toast, t]
+    [supabase, toast, t, transactions]
   );
 
   // Putting money into a goal is a real money movement: it records a
@@ -705,8 +773,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           amount_kzt: amountKzt,
           note: goal?.title ?? "",
           occurred_on: date,
+          goal_id: goalId,
         })
-        .select("id,type,category,amount_kzt,note,occurred_on")
+        .select("id,type,category,amount_kzt,note,occurred_on,goal_id")
         .single();
       if (data) {
         setTransactions((prev) =>
@@ -768,6 +837,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addTxOpen,
     openAddTransaction,
     closeAddTransaction,
+    helpOpen,
+    openHelp,
+    closeHelp,
     canInstall: !!installPrompt,
     promptInstall,
     search,
@@ -811,6 +883,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ) : (
         <AuthScreen />
       )}
+
+      {session && <HelpModal open={helpOpen} onClose={closeHelp} />}
 
       <Toaster toasts={toasts} onDismiss={(id) => setToasts((p) => p.filter((x) => x.id !== id))} />
       <ConfirmDialog

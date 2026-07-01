@@ -50,6 +50,7 @@ export type Transaction = {
   type: CatType;
   amountKzt: number;
   note: string;
+  goalId: string | null; // set when this tx is a contribution toward a goal
 };
 
 export type Goal = {
@@ -106,7 +107,7 @@ export function rowToBudget(r: { id: string; category: string; limit_kzt: number
 }
 
 export const GOAL_SUGGESTIONS: { key: string; color: string }[] = [
-  { key: "kaspi", color: "#f43f6e" },
+  { key: "installments", color: "#f43f6e" },
   { key: "downpayment", color: "#8b5cf6" },
   { key: "teeth", color: "#0ea5e9" },
   { key: "chinese", color: "#f59e0b" },
@@ -175,6 +176,7 @@ type TxRow = {
   amount_kzt: number | string;
   note: string | null;
   occurred_on: string;
+  goal_id?: string | null;
 };
 
 export function rowToTransaction(r: TxRow): Transaction {
@@ -185,6 +187,7 @@ export function rowToTransaction(r: TxRow): Transaction {
     type: r.type,
     amountKzt: Number(r.amount_kzt),
     note: r.note ?? "",
+    goalId: r.goal_id ?? null,
   };
 }
 

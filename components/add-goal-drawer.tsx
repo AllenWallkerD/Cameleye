@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useApp } from "./app-provider";
 import { Icon } from "./icons";
 import { CURRENCIES, convert, groupAmountInput, parseAmountInput } from "@/lib/currency";
-import { useEscape } from "@/lib/use-escape";
+import { useModal } from "@/lib/use-modal";
 import { GOAL_SUGGESTIONS, type Goal } from "@/lib/data";
 
 export function AddGoalDrawer({
@@ -28,7 +28,7 @@ export function AddGoalDrawer({
   );
   const [busy, setBusy] = useState(false);
 
-  useEscape(onClose);
+  const panelRef = useModal(open, onClose);
 
   if (!open) return null;
 
@@ -59,7 +59,12 @@ export function AddGoalDrawer({
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="animate-fade-up relative flex h-full w-full max-w-md flex-col bg-card shadow-2xl">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        className="animate-fade-up relative flex h-full w-full max-w-md flex-col bg-card shadow-2xl"
+      >
         <div className="flex items-center justify-between border-b px-6 py-4">
           <h2 className="text-lg font-semibold">{editing ? t("edit") : t("goals.new")}</h2>
           <button onClick={onClose} className="rounded-lg p-1.5 text-fg-muted hover:text-fg">
@@ -114,19 +119,24 @@ export function AddGoalDrawer({
             </div>
           </Field>
 
-          <Field label={t("goals.saved2")}>
-            <div className="flex items-center rounded-xl border bg-card px-3 focus-within:border-accent">
-              <span className="text-fg-muted">{CURRENCIES[currency].symbol}</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={saved}
-                onChange={(e) => setSaved(groupAmountInput(e.target.value))}
-                placeholder="0"
-                className="w-full bg-transparent px-2 py-2.5 outline-none"
-              />
-            </div>
-          </Field>
+          {/* opening balance — money already set aside before tracking. Only on
+              create; afterwards progress moves via "Add money" contributions. */}
+          {!editing && (
+            <Field label={t("goals.saved2")}>
+              <div className="flex items-center rounded-xl border bg-card px-3 focus-within:border-accent">
+                <span className="text-fg-muted">{CURRENCIES[currency].symbol}</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={saved}
+                  onChange={(e) => setSaved(groupAmountInput(e.target.value))}
+                  placeholder="0"
+                  className="w-full bg-transparent px-2 py-2.5 outline-none"
+                />
+              </div>
+              <p className="text-xs text-fg-muted">{t("goals.saved2.hint")}</p>
+            </Field>
+          )}
         </div>
 
         <div className="flex gap-3 border-t px-6 py-4">

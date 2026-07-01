@@ -5,7 +5,7 @@ import { useApp } from "./app-provider";
 import { Icon } from "./icons";
 import { CategoryIcon } from "./category-icons";
 import { CURRENCIES, convert, groupAmountInput, parseAmountInput } from "@/lib/currency";
-import { useEscape } from "@/lib/use-escape";
+import { useModal } from "@/lib/use-modal";
 import type { CatType, Recurring } from "@/lib/data";
 
 export function RecurringDrawer({
@@ -21,7 +21,7 @@ export function RecurringDrawer({
   const [type, setType] = useState<CatType>(editing?.type ?? "expense");
   const [category, setCategory] = useState<string>(editing?.category ?? "");
   const [amount, setAmount] = useState(
-    editing ? groupAmountInput(String(convert(editing.amountKzt, currency))) : ""
+    editing ? groupAmountInput(String(Math.round(convert(editing.amountKzt, currency)))) : ""
   );
   const [day, setDay] = useState(editing ? String(editing.dayOfMonth) : "1");
   const [note, setNote] = useState(editing?.note ?? "");
@@ -33,7 +33,7 @@ export function RecurringDrawer({
     if (!cats.some((c) => c.id === category)) setCategory(cats[0]?.id ?? "");
   }, [cats, category]);
 
-  useEscape(onClose);
+  const panelRef = useModal(open, onClose);
 
   if (!open) return null;
 
@@ -67,7 +67,12 @@ export function RecurringDrawer({
     <div className="fixed inset-0 z-[60] flex justify-end">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="animate-fade-up relative flex h-full w-full max-w-md flex-col bg-card shadow-2xl">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        className="animate-fade-up relative flex h-full w-full max-w-md flex-col bg-card shadow-2xl"
+      >
         <div className="flex items-center justify-between border-b px-6 py-4">
           <h2 className="text-lg font-semibold">{editing ? t("edit") : t("recurring.new")}</h2>
           <button onClick={onClose} className="rounded-lg p-1.5 text-fg-muted hover:text-fg">

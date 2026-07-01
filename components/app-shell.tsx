@@ -32,8 +32,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <BottomNav />
 
-      {/* the single, app-wide add-transaction drawer */}
-      <AddTransactionDrawer open={addTxOpen} onClose={closeAddTransaction} />
+      {/* the single, app-wide add-transaction drawer — keyed so each open
+          starts fresh (date = today, no leftover category/amount) */}
+      <AddTransactionDrawer
+        key={addTxOpen ? "open" : "closed"}
+        open={addTxOpen}
+        onClose={closeAddTransaction}
+      />
     </div>
   );
 }

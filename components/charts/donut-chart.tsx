@@ -35,7 +35,7 @@ export function DonutChart({
       <svg viewBox="0 0 200 200" className="h-40 w-40 shrink-0" aria-hidden="true">
         {arcs.map((a) => (
           <path
-            key={a.label}
+            key={a.i}
             d={ring(cx, cy, R, r, a.start, a.end)}
             fill={a.color}
             opacity={hover === null || hover === a.i ? 1 : 0.35}
@@ -54,10 +54,10 @@ export function DonutChart({
         </text>
       </svg>
 
-      <ul className="grid w-full grid-cols-1 gap-1.5 text-sm @xs:grid-cols-2">
+      <ul className="grid w-full grid-cols-1 gap-1.5 text-sm">
         {arcs.map((a) => (
           <li
-            key={a.label}
+            key={a.i}
             className="flex items-center justify-between gap-2 rounded-lg px-2 py-1 transition-colors"
             style={{ background: hover === a.i ? "var(--bg-subtle)" : "transparent" }}
             onMouseEnter={() => setHover(a.i)}

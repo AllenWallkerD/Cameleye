@@ -34,6 +34,7 @@ export default function SettingsPage() {
         date: x.date,
         type: x.type,
         categoryName: categoryById(x.category).name,
+        categoryId: x.category,
         amountKzt: x.amountKzt,
         note: x.note,
       }));
@@ -303,8 +304,13 @@ export default function SettingsPage() {
         </button>
       </section>
 
-      <AddCategoryDrawer open={catOpen} onClose={() => setCatOpen(false)} editing={editing} />
-      <RecurringDrawer open={recOpen} onClose={() => setRecOpen(false)} />
+      <AddCategoryDrawer
+        key={catOpen ? editing?.id ?? "new" : "closed"}
+        open={catOpen}
+        onClose={() => setCatOpen(false)}
+        editing={editing}
+      />
+      <RecurringDrawer key={recOpen ? "new" : "closed"} open={recOpen} onClose={() => setRecOpen(false)} />
       {recEdit && (
         <RecurringDrawer key={recEdit.id} open editing={recEdit} onClose={() => setRecEdit(null)} />
       )}
