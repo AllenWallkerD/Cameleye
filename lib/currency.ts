@@ -4,6 +4,11 @@
 
 export type CurrencyCode = "KZT" | "USD" | "EUR";
 
+// Sanity ceiling for any single money value (in the base currency, KZT).
+// 100 billion ₸ — comfortably above any real personal amount, but blocks the
+// absurd/overflow values that corrupt aggregations. Mirrors the DB CHECK.
+export const MAX_AMOUNT_KZT = 100_000_000_000;
+
 export const CURRENCIES: Record<
   CurrencyCode,
   { symbol: string; ratePerKzt: number; label: string }

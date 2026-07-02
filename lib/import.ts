@@ -1,3 +1,4 @@
+import { MAX_AMOUNT_KZT } from "./currency";
 import type { CategoryMeta, CatType } from "./data";
 
 export type ParsedTx = {
@@ -41,7 +42,16 @@ function parseCSV(text: string): string[][] {
   return rows;
 }
 
-const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s.trim());
+// Accept only real calendar dates in a sane range — regex alone would let
+// "2026-13-45" or "9999-99-99" through and blow up the batch insert.
+function isDate(s: string): boolean {
+  const v = s.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const [y, m, d] = v.split("-").map(Number);
+  if (y < 2000 || y > 2100 || m < 1 || m > 12 || d < 1 || d > 31) return false;
+  const dt = new Date(y, m - 1, d);
+  return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+}
 
 // Columns expected (same as the export):
 // Date, Type, Category, Amount (KZT), Note, Category ID (optional, last)
@@ -71,9 +81,10 @@ export function parseTransactionsCSV(text: string, categories: CategoryMeta[]): 
     } else {
       category = type === "income" ? "income_other" : "other";
     }
-    const amountKzt = Math.abs(parseFloat((r[3] ?? "").replace(/[^0-9.-]/g, ""))) || 0;
+    const parsed = Math.abs(parseFloat((r[3] ?? "").replace(/[^0-9.-]/g, "")));
+    if (!Number.isFinite(parsed) || parsed <= 0) continue;
+    const amountKzt = Math.min(parsed, MAX_AMOUNT_KZT); // clamp absurd/overflow values
     const note = (r[4] ?? "").trim();
-    if (amountKzt <= 0) continue;
     out.push({ date, type, category, amountKzt, note });
   }
   return out;

@@ -9,6 +9,14 @@ export type Period =
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
+// Colors are rendered into inline styles/SVG, so anything coming from the DB is
+// validated to a plain 6-digit hex before use (defense-in-depth against a
+// malicious color string smuggling a url()/beacon into a CSS shorthand).
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+export function safeColor(color: string, fallback = "#94a3b8"): string {
+  return HEX_COLOR.test(color) ? color : fallback;
+}
+
 // A fully-resolved category used across the UI (defaults + user-created).
 export type CategoryMeta = {
   id: string; // default slug (e.g. "rent") or DB uuid for custom ones
@@ -272,7 +280,7 @@ export function rowToGoal(r: GoalRow): Goal {
     title: r.title ?? r.key,
     targetKzt: Number(r.target_kzt),
     savedKzt: Number(r.saved_kzt),
-    color: r.color,
+    color: safeColor(r.color, "#a78bfa"),
   };
 }
 
@@ -290,7 +298,7 @@ export function rowToCategory(r: CatRow): CategoryMeta {
     type: r.type,
     name: r.name,
     icon: r.icon,
-    color: r.color,
+    color: safeColor(r.color),
     custom: true,
   };
 }

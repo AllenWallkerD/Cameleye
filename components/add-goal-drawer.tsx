@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useApp } from "./app-provider";
 import { Icon } from "./icons";
-import { CURRENCIES, convert, groupAmountInput, parseAmountInput } from "@/lib/currency";
+import { CURRENCIES, MAX_AMOUNT_KZT, convert, groupAmountInput, parseAmountInput } from "@/lib/currency";
 import { useModal } from "@/lib/use-modal";
 import { GOAL_SUGGESTIONS, type Goal } from "@/lib/data";
 
@@ -41,11 +41,14 @@ export function AddGoalDrawer({
   async function submit() {
     if (!title.trim()) return;
     const rate = CURRENCIES[currency].ratePerKzt;
+    const targetKzt = parseAmountInput(target) / rate;
+    const savedKzt = parseAmountInput(saved) / rate;
+    if (targetKzt > MAX_AMOUNT_KZT || savedKzt > MAX_AMOUNT_KZT) return;
     const payload = {
       key,
       title: title.trim(),
-      targetKzt: parseAmountInput(target) / rate,
-      savedKzt: parseAmountInput(saved) / rate,
+      targetKzt,
+      savedKzt,
       color,
     };
     setBusy(true);

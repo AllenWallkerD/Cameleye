@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useApp } from "./app-provider";
 import { Icon } from "./icons";
 import { CategoryIcon } from "./category-icons";
-import { CURRENCIES, convert, groupAmountInput, parseAmountInput } from "@/lib/currency";
+import { CURRENCIES, MAX_AMOUNT_KZT, convert, groupAmountInput, parseAmountInput } from "@/lib/currency";
 import { useModal } from "@/lib/use-modal";
 import type { CatType, Recurring } from "@/lib/data";
 
@@ -52,10 +52,12 @@ export function RecurringDrawer({
     const value = parseAmountInput(amount);
     const d = parseInt(day, 10);
     if (value <= 0 || !category || !d) return;
+    const amountKzt = value / CURRENCIES[currency].ratePerKzt;
+    if (amountKzt > MAX_AMOUNT_KZT) return;
     const payload = {
       type,
       category,
-      amountKzt: value / CURRENCIES[currency].ratePerKzt,
+      amountKzt,
       note,
       dayOfMonth: d,
     };

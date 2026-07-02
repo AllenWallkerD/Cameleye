@@ -11,21 +11,24 @@ import { LOCALES, type Locale } from "@/lib/i18n";
 import { CURRENCIES, formatMoney, type CurrencyCode } from "@/lib/currency";
 import { exportTransactionsCSV } from "@/lib/export";
 import { parseTransactionsCSV } from "@/lib/import";
+import { useModal } from "@/lib/use-modal";
 import type { CategoryMeta, Recurring } from "@/lib/data";
 
 export default function SettingsPage() {
   const {
     t, locale, setLocale, currency, setCurrency, theme, toggleTheme,
     displayName, email, categories, categoryById, removeCategory,
-    recurring, removeRecurring, transactions, updatePassword, importTransactions, deleteAccount, toast, confirm, signOut,
+    recurring, removeRecurring, transactions, hasPassword, updatePassword, importTransactions, toast, confirm, signOut,
   } = useApp();
   const fileRef = useRef<HTMLInputElement>(null);
   const [catOpen, setCatOpen] = useState(false);
   const [editing, setEditing] = useState<CategoryMeta | null>(null);
   const [recOpen, setRecOpen] = useState(false);
   const [recEdit, setRecEdit] = useState<Recurring | null>(null);
+  const [curPw, setCurPw] = useState("");
   const [pw, setPw] = useState("");
   const [pwBusy, setPwBusy] = useState(false);
+  const [delOpen, setDelOpen] = useState(false);
 
   function exportCsv() {
     const rows = [...transactions]
@@ -45,6 +48,11 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      // guard against a huge file freezing the tab (self-DoS)
+      toast(t("import.invalid"), "err");
+      return;
+    }
     try {
       const rows = parseTransactionsCSV(await file.text(), categories);
       if (rows.length) await importTransactions(rows);
@@ -55,11 +63,14 @@ export default function SettingsPage() {
   }
 
   async function changePassword() {
-    if (pw.length < 6) return;
+    if (!curPw || pw.length < 8) return;
     setPwBusy(true);
-    const ok = await updatePassword(pw);
+    const ok = await updatePassword(curPw, pw);
     setPwBusy(false);
-    if (ok) setPw("");
+    if (ok) {
+      setPw("");
+      setCurPw("");
+    }
   }
 
   const custom = categories.filter((c) => c.custom);
@@ -258,29 +269,46 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      {/* security — change password */}
-      <Card title={t("pw.title")}>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex flex-1 items-center rounded-xl border bg-card px-3 focus-within:border-accent">
-            <Icon.lock width={16} height={16} className="text-fg-muted" />
-            <input
-              type="password"
-              value={pw}
-              minLength={6}
-              onChange={(e) => setPw(e.target.value)}
-              placeholder={t("pw.new")}
-              className="w-full bg-transparent px-2 py-2.5 text-sm outline-none"
-            />
+      {/* security — change password (email/password accounts only) */}
+      {hasPassword && (
+        <Card title={t("pw.title")}>
+          <div className="space-y-2">
+            <div className="flex items-center rounded-xl border bg-card px-3 focus-within:border-accent">
+              <Icon.lock width={16} height={16} className="text-fg-muted" />
+              <input
+                type="password"
+                value={curPw}
+                onChange={(e) => setCurPw(e.target.value)}
+                placeholder={t("pw.current")}
+                autoComplete="current-password"
+                className="w-full bg-transparent px-2 py-2.5 text-sm outline-none"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-1 items-center rounded-xl border bg-card px-3 focus-within:border-accent">
+                <Icon.lock width={16} height={16} className="text-fg-muted" />
+                <input
+                  type="password"
+                  value={pw}
+                  minLength={8}
+                  onChange={(e) => setPw(e.target.value)}
+                  placeholder={t("pw.new")}
+                  autoComplete="new-password"
+                  className="w-full bg-transparent px-2 py-2.5 text-sm outline-none"
+                />
+              </div>
+              <button
+                onClick={changePassword}
+                disabled={!curPw || pw.length < 8 || pwBusy}
+                className="grad-accent rounded-xl px-3.5 py-2.5 text-sm font-medium text-white shadow-sm shadow-accent/30 hover:opacity-90 disabled:opacity-50"
+              >
+                {pwBusy ? "…" : t("pw.change")}
+              </button>
+            </div>
+            <p className="text-xs text-fg-muted">{t("pw.hint")}</p>
           </div>
-          <button
-            onClick={changePassword}
-            disabled={pw.length < 6 || pwBusy}
-            className="grad-accent rounded-xl px-3.5 py-2.5 text-sm font-medium text-white shadow-sm shadow-accent/30 hover:opacity-90 disabled:opacity-50"
-          >
-            {pwBusy ? "…" : t("pw.change")}
-          </button>
-        </div>
-      </Card>
+        </Card>
+      )}
 
       <button
         onClick={signOut}
@@ -294,15 +322,15 @@ export default function SettingsPage() {
       <section className="rounded-2xl border border-neg/30 bg-card p-5 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold text-neg">{t("danger.title")}</h2>
         <button
-          onClick={async () => {
-            if (await confirm(t("danger.confirm"))) deleteAccount();
-          }}
+          onClick={() => setDelOpen(true)}
           className="flex items-center gap-2 rounded-xl bg-neg px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
         >
           <Icon.trash width={16} height={16} />
           {t("danger.delete")}
         </button>
       </section>
+
+      {delOpen && <DeleteAccountDialog onClose={() => setDelOpen(false)} />}
 
       <AddCategoryDrawer
         key={catOpen ? editing?.id ?? "new" : "closed"}
@@ -315,6 +343,87 @@ export default function SettingsPage() {
         <RecurringDrawer key={recEdit.id} open editing={recEdit} onClose={() => setRecEdit(null)} />
       )}
     </>
+  );
+}
+
+// Re-authenticated account deletion: password accounts must re-enter their
+// password; OAuth-only accounts must type their email to confirm.
+function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
+  const { t, email, hasPassword, deleteAccount } = useApp();
+  const [pw, setPw] = useState("");
+  const [confirmText, setConfirmText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const panelRef = useModal(true, onClose);
+
+  const ready = hasPassword
+    ? pw.length > 0
+    : confirmText.trim().toLowerCase() === (email ?? "").trim().toLowerCase();
+
+  async function run() {
+    if (!ready || busy) return;
+    setBusy(true);
+    // on success the app signs out and swaps to AuthScreen; on failure a toast
+    // is shown and the dialog stays open so the user can retry.
+    const ok = await deleteAccount(hasPassword ? pw : undefined);
+    if (!ok) setBusy(false);
+  }
+
+  return (
+    <div className="fixed inset-0 z-[70] grid place-items-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        className="animate-fade-up relative w-full max-w-sm rounded-2xl border bg-card p-6 shadow-2xl"
+      >
+        <h2 className="text-lg font-semibold text-neg">{t("danger.delete")}</h2>
+        <p className="mt-2 text-sm text-fg-muted">{t("danger.confirm")}</p>
+
+        {hasPassword ? (
+          <div className="mt-4 flex items-center rounded-xl border bg-card px-3 focus-within:border-accent">
+            <Icon.lock width={16} height={16} className="text-fg-muted" />
+            <input
+              type="password"
+              value={pw}
+              onChange={(e) => setPw(e.target.value)}
+              placeholder={t("pw.current")}
+              autoComplete="current-password"
+              autoFocus
+              className="w-full bg-transparent px-2 py-2.5 text-sm outline-none"
+            />
+          </div>
+        ) : (
+          <div className="mt-4 space-y-1.5">
+            <p className="text-xs text-fg-muted">{t("danger.typeEmail")}</p>
+            <input
+              type="email"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder={email}
+              autoFocus
+              className="w-full rounded-xl border bg-card px-3 py-2.5 text-sm outline-none focus:border-accent"
+            />
+          </div>
+        )}
+
+        <div className="mt-5 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 rounded-xl border py-2.5 text-sm font-medium text-fg-muted hover:text-fg"
+          >
+            {t("tx.cancel")}
+          </button>
+          <button
+            onClick={run}
+            disabled={!ready || busy}
+            className="flex-1 rounded-xl bg-neg py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {busy ? "…" : t("danger.delete")}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

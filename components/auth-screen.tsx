@@ -36,11 +36,27 @@ export function AuthScreen() {
         if (error) throw error;
         if (!data.session) setNotice(t("auth.checkEmail"));
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+    } catch {
+      // generic, localized message — never echo the raw server reason (it can
+      // reveal whether an account exists → enumeration).
+      setError(mode === "signin" ? t("auth.invalid") : t("auth.failed"));
     } finally {
       setBusy(false);
     }
+  }
+
+  async function forgot() {
+    setError(null);
+    setNotice(null);
+    if (!email) {
+      setError(t("auth.enterEmail"));
+      return;
+    }
+    await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset`,
+    });
+    // same notice regardless of whether the email exists (no enumeration)
+    setNotice(t("auth.resetSent"));
   }
 
   async function google() {
@@ -125,7 +141,7 @@ export function AuthScreen() {
             <input
               type="password"
               required
-              minLength={6}
+              minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder={t("auth.password")}
@@ -146,6 +162,16 @@ export function AuthScreen() {
             >
               {busy ? "…" : mode === "signin" ? t("auth.signin") : t("auth.signup")}
             </button>
+
+            {mode === "signin" && (
+              <button
+                type="button"
+                onClick={forgot}
+                className="w-full text-center text-xs text-fg-muted transition-colors hover:text-fg"
+              >
+                {t("auth.forgot")}
+              </button>
+            )}
           </form>
 
           <button

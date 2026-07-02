@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useApp } from "./app-provider";
 import { Icon } from "./icons";
 import { DatePicker, MIN_PICKABLE_DATE, todayISO } from "./date-picker";
-import { CURRENCIES, formatMoney, groupAmountInput, parseAmountInput } from "@/lib/currency";
+import { CURRENCIES, MAX_AMOUNT_KZT, formatMoney, groupAmountInput, parseAmountInput } from "@/lib/currency";
 import { useModal } from "@/lib/use-modal";
 import type { Goal } from "@/lib/data";
 
@@ -30,8 +30,10 @@ export function ContributeDrawer({
     if (!goal) return;
     const value = parseAmountInput(amount);
     if (value <= 0) return;
+    const amountKzt = value / CURRENCIES[currency].ratePerKzt;
+    if (amountKzt > MAX_AMOUNT_KZT) return;
     setBusy(true);
-    await contributeToGoal(goal.id, value / CURRENCIES[currency].ratePerKzt, date);
+    await contributeToGoal(goal.id, amountKzt, date);
     setBusy(false);
     setAmount("");
     onClose();

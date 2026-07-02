@@ -2,7 +2,14 @@
 export function exportTransactionsCSV(
   rows: { date: string; type: string; categoryName: string; categoryId: string; amountKzt: number; note: string }[]
 ) {
-  const esc = (s: string | number) => `"${String(s).replace(/"/g, '""')}"`;
+  // Quote every field AND neutralize CSV formula injection: a leading
+  // = + - @ (or tab/CR) makes Excel/Sheets evaluate the cell, so we prefix a
+  // single quote to force it to be treated as text.
+  const esc = (s: string | number) => {
+    let v = String(s);
+    if (/^[=+\-@\t\r]/.test(v)) v = "'" + v;
+    return `"${v.replace(/"/g, '""')}"`;
+  };
   // Category ID (a stable slug/uuid) is appended last so it survives a
   // round-trip across languages; older exports without it still import by name.
   const header = ["Date", "Type", "Category", "Amount (KZT)", "Note", "Category ID"];

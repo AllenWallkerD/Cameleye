@@ -40,10 +40,28 @@ create table if not exists public.goals (
 );
 
 -- Link a transaction to the goal it contributes to (a "savings" expense).
--- ON DELETE SET NULL: deleting a goal keeps its contributions in history,
--- just unlinked. Declared here because it references goals (created above).
+-- The FK is COMPOSITE (goal_id, user_id) → goals (id, user_id) so a user can
+-- only ever link to their OWN goal — a plain goal_id FK would validate against
+-- table owner privileges (ignoring RLS), letting a user reference another
+-- user's goal UUID (a cross-tenant existence oracle).
+-- ON DELETE SET NULL (goal_id): deleting a goal keeps its contributions in
+-- history, just unlinked (only goal_id is nulled, not the NOT NULL user_id).
 alter table public.transactions
-  add column if not exists goal_id uuid references public.goals (id) on delete set null;
+  add column if not exists goal_id uuid;
+
+alter table public.goals
+  drop constraint if exists goals_id_user_unique;
+alter table public.goals
+  add constraint goals_id_user_unique unique (id, user_id);
+
+alter table public.transactions
+  drop constraint if exists transactions_goal_id_fkey;
+alter table public.transactions
+  drop constraint if exists transactions_goal_id_user_id_fkey;
+alter table public.transactions
+  add constraint transactions_goal_id_user_id_fkey
+  foreign key (goal_id, user_id) references public.goals (id, user_id)
+  on delete set null (goal_id);
 
 -- User-created categories (defaults live in code; these are the custom ones).
 create table if not exists public.categories (
@@ -86,6 +104,29 @@ create index if not exists goals_user_idx
   on public.goals (user_id);
 create index if not exists categories_user_idx
   on public.categories (user_id);
+
+-- ──────────────────────────────────────────────────────────────
+-- 1b. Value sanity constraints (server-side backstops)
+-- The client only talks to PostgREST with the anon key, so any invariant not
+-- expressed here is unenforceable. Cap money at 100 billion (well above any
+-- real amount, blocks overflow/corruption) and require plain #rrggbb colors
+-- (colors are rendered into inline styles / SVG). Added idempotently.
+-- ──────────────────────────────────────────────────────────────
+alter table public.transactions drop constraint if exists transactions_amount_max;
+alter table public.transactions add constraint transactions_amount_max check (amount_kzt <= 100000000000);
+alter table public.goals drop constraint if exists goals_target_max;
+alter table public.goals add constraint goals_target_max check (target_kzt <= 100000000000);
+alter table public.goals drop constraint if exists goals_saved_max;
+alter table public.goals add constraint goals_saved_max check (saved_kzt <= 100000000000);
+alter table public.recurring drop constraint if exists recurring_amount_max;
+alter table public.recurring add constraint recurring_amount_max check (amount_kzt <= 100000000000);
+alter table public.budgets drop constraint if exists budgets_limit_max;
+alter table public.budgets add constraint budgets_limit_max check (limit_kzt <= 100000000000);
+
+alter table public.goals drop constraint if exists goals_color_hex;
+alter table public.goals add constraint goals_color_hex check (color ~ '^#[0-9A-Fa-f]{6}$');
+alter table public.categories drop constraint if exists categories_color_hex;
+alter table public.categories add constraint categories_color_hex check (color ~ '^#[0-9A-Fa-f]{6}$');
 
 -- ──────────────────────────────────────────────────────────────
 -- 2. Row Level Security — each user can touch ONLY their own rows

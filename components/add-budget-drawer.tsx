@@ -6,6 +6,7 @@ import { Icon } from "./icons";
 import { CategoryIcon } from "./category-icons";
 import {
   CURRENCIES,
+  MAX_AMOUNT_KZT,
   convert,
   groupAmountInput,
   parseAmountInput,
@@ -48,8 +49,10 @@ export function AddBudgetDrawer({
   async function submit() {
     const value = parseAmountInput(amount);
     if (!category || value <= 0) return;
+    const limitKzt = value / CURRENCIES[currency].ratePerKzt;
+    if (limitKzt > MAX_AMOUNT_KZT) return;
     setBusy(true);
-    await setBudget(category, value / CURRENCIES[currency].ratePerKzt);
+    await setBudget(category, limitKzt);
     setBusy(false);
     onClose();
   }

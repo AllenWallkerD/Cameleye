@@ -81,8 +81,9 @@ type Ctx = {
   email: string | undefined;
   displayName: string | undefined;
   signOut: () => Promise<void>;
-  updatePassword: (newPassword: string) => Promise<boolean>;
-  deleteAccount: () => Promise<void>;
+  hasPassword: boolean;
+  updatePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
+  deleteAccount: (password?: string) => Promise<boolean>;
   addTxOpen: boolean;
   openAddTransaction: () => void;
   closeAddTransaction: () => void;
@@ -824,25 +825,59 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   }, [supabase]);
 
+  // whether this account has an email/password identity (vs Google-only), so
+  // callers know if a password re-auth is possible.
+  const hasPassword = !!session?.user?.identities?.some((i) => i.provider === "email");
+
+  // Re-verify the user's password before a sensitive action. signInWithPassword
+  // just refreshes the current user's own session on success — no side effects.
+  const reauthenticate = useCallback(
+    async (password: string): Promise<boolean> => {
+      const em = session?.user?.email;
+      if (!em) return false;
+      const { error } = await supabase.auth.signInWithPassword({ email: em, password });
+      return !error;
+    },
+    [supabase, session]
+  );
+
   const updatePassword = useCallback(
-    async (newPassword: string) => {
+    async (currentPassword: string, newPassword: string) => {
+      // require the current password first: a live session alone must not be
+      // enough to silently change the password and lock the owner out.
+      if (!(await reauthenticate(currentPassword))) {
+        toast(t("pw.wrong"), "err");
+        return false;
+      }
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       toast(error ? t("toast.error") : t("toast.updated"), error ? "err" : "ok");
       return !error;
     },
-    [supabase, toast, t]
+    [supabase, toast, t, reauthenticate]
   );
 
-  const deleteAccount = useCallback(async () => {
-    // delete_user() is a SECURITY DEFINER SQL function that removes the auth
-    // user; ON DELETE CASCADE wipes all their rows. Then we sign out.
-    const { error } = await supabase.rpc("delete_user");
-    if (error) {
-      toast(t("toast.error"), "err");
-      return;
-    }
-    await supabase.auth.signOut();
-  }, [supabase, toast, t]);
+  const deleteAccount = useCallback(
+    async (password?: string): Promise<boolean> => {
+      // password accounts must re-authenticate; OAuth-only accounts confirm via
+      // the "type your email" gate in the UI (they have no password to verify).
+      if (hasPassword) {
+        if (!password || !(await reauthenticate(password))) {
+          toast(t("pw.wrong"), "err");
+          return false;
+        }
+      }
+      // delete_user() is a SECURITY DEFINER SQL function that removes the auth
+      // user; ON DELETE CASCADE wipes all their rows. Then we sign out.
+      const { error } = await supabase.rpc("delete_user");
+      if (error) {
+        toast(t("toast.error"), "err");
+        return false;
+      }
+      await supabase.auth.signOut();
+      return true;
+    },
+    [supabase, toast, t, hasPassword, reauthenticate]
+  );
 
   const value: Ctx = {
     locale,
@@ -861,6 +896,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       (session?.user?.user_metadata?.name as string | undefined) ||
       session?.user?.email?.split("@")[0],
     signOut,
+    hasPassword,
     updatePassword,
     deleteAccount,
     addTxOpen,

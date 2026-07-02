@@ -6,7 +6,7 @@ import { Icon } from "./icons";
 import { CategoryIcon } from "./category-icons";
 import { AddCategoryDrawer } from "./add-category-drawer";
 import { DatePicker, MIN_PICKABLE_DATE, todayISO } from "./date-picker";
-import { CURRENCIES, convert, groupAmountInput, parseAmountInput } from "@/lib/currency";
+import { CURRENCIES, MAX_AMOUNT_KZT, convert, groupAmountInput, parseAmountInput } from "@/lib/currency";
 import { useModal } from "@/lib/use-modal";
 import type { CatType, Transaction } from "@/lib/data";
 
@@ -49,6 +49,7 @@ export function AddTransactionDrawer({
     const value = parseAmountInput(amount);
     if (!value || value <= 0 || !category) return;
     const amountKzt = value / CURRENCIES[currency].ratePerKzt;
+    if (amountKzt > MAX_AMOUNT_KZT) return;
     const payload = { date, category, type, amountKzt, note };
     setBusy(true);
     if (editing) await updateTransaction(editing.id, payload);
