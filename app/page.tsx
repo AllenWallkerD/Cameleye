@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useApp } from "@/components/app-provider";
 import { SummaryCards } from "@/components/summary-cards";
-import { PeriodTabs, currentYM, type Period } from "@/components/period-tabs";
+import { PeriodTabs, currentYM, periodLabel, type Period } from "@/components/period-tabs";
 import { TransactionsTable } from "@/components/transactions-table";
 import { BarChart } from "@/components/charts/bar-chart";
 import { DonutChart } from "@/components/charts/donut-chart";
@@ -12,7 +12,7 @@ import { MONTHS } from "@/components/date-picker";
 import { DashboardSkeleton } from "@/components/skeleton";
 import { OnboardingCard } from "@/components/onboarding-card";
 import { Icon } from "@/components/icons";
-import { buildBarSeries, inPeriod, shiftYM } from "@/lib/data";
+import { buildBarSeries, budgetMultiplier, inPeriod, shiftYM } from "@/lib/data";
 import { formatMoney } from "@/lib/currency";
 
 export default function DashboardPage() {
@@ -68,10 +68,7 @@ export default function DashboardPage() {
       .sort((a, b) => b.value - a.value);
   }, [filtered, categoryById]);
 
-  const periodLabel =
-    period.mode === "year"
-      ? String(period.y)
-      : `${MONTHS[locale][Number(period.ym.slice(5)) - 1]} ${period.ym.slice(0, 4)}`;
+  const label = periodLabel(period, locale);
 
   const recent = useMemo(
     () => [...filtered].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 6),
@@ -79,7 +76,7 @@ export default function DashboardPage() {
   );
 
   const alerts = useMemo(() => {
-    const mult = period.mode === "year" ? 12 : 1;
+    const mult = budgetMultiplier(period);
     const spent = new Map<string, number>();
     for (const x of filtered) {
       if (x.type !== "expense") continue;
@@ -152,7 +149,7 @@ export default function DashboardPage() {
           <div className="mb-4 flex items-center justify-between gap-2">
             <h2 className="font-semibold">{t("chart.incomeVsExpense")}</h2>
             <div className="flex items-center gap-3">
-              <span className="hidden text-xs text-fg-muted sm:inline">{periodLabel}</span>
+              <span className="hidden text-xs text-fg-muted sm:inline">{label}</span>
               <Legend t={t} />
             </div>
           </div>
@@ -162,7 +159,7 @@ export default function DashboardPage() {
         <section className="rounded-2xl border bg-card p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-2">
             <h2 className="truncate font-semibold">{t("chart.byCategory")}</h2>
-            <span className="shrink-0 text-xs text-fg-muted">{periodLabel}</span>
+            <span className="shrink-0 text-xs text-fg-muted">{label}</span>
           </div>
           {donutData.length ? (
             <DonutChart data={donutData} currency={currency} />

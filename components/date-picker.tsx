@@ -95,10 +95,10 @@ export function DatePicker({
       <button
         type="button"
         onClick={toggle}
-        className="flex w-full items-center justify-between rounded-xl border bg-card px-3 py-2.5 text-left outline-none transition-colors focus:border-accent"
+        className="flex w-full min-w-0 items-center justify-between gap-2 rounded-xl border bg-card px-3 py-2.5 text-left outline-none transition-colors focus:border-accent"
       >
-        <span>{`${sd} ${MONTHS[locale][sm - 1]} ${sy}`}</span>
-        <Icon.calendar width={17} height={17} className="text-fg-muted" />
+        <span className="truncate">{`${sd} ${MONTHS[locale][sm - 1]} ${sy}`}</span>
+        <Icon.calendar width={17} height={17} className="shrink-0 text-fg-muted" />
       </button>
 
       {open && (

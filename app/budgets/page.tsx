@@ -6,7 +6,7 @@ import { PeriodTabs, currentYM, type Period } from "@/components/period-tabs";
 import { CategoryIcon } from "@/components/category-icons";
 import { AddBudgetDrawer } from "@/components/add-budget-drawer";
 import { Icon } from "@/components/icons";
-import { inPeriod } from "@/lib/data";
+import { budgetMultiplier, inPeriod } from "@/lib/data";
 import { formatMoney } from "@/lib/currency";
 
 export default function BudgetsPage() {
@@ -15,7 +15,7 @@ export default function BudgetsPage() {
   const [open, setOpen] = useState(false);
   const [editCat, setEditCat] = useState<string | null>(null);
 
-  const multiplier = period.mode === "year" ? 12 : 1;
+  const multiplier = budgetMultiplier(period);
 
   const spentByCat = useMemo(() => {
     const m = new Map<string, number>();

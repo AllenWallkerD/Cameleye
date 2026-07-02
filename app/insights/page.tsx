@@ -5,29 +5,29 @@ import { useApp } from "@/components/app-provider";
 import { PeriodTabs, currentYM, type Period } from "@/components/period-tabs";
 import { BarChart } from "@/components/charts/bar-chart";
 import { CategoryIcon } from "@/components/category-icons";
-import { MONTHS } from "@/components/date-picker";
+import { MONTHS, todayISO } from "@/components/date-picker";
 import { Skeleton } from "@/components/skeleton";
 import { Icon } from "@/components/icons";
-import { buildBarSeries, daysInMonthYM, inPeriod, shiftYM } from "@/lib/data";
+import { addDays, buildBarSeries, daysInMonthYM, inPeriod, rangeDays, shiftYM } from "@/lib/data";
 import { formatMoney } from "@/lib/currency";
 
 export default function InsightsPage() {
   const { t, locale, currency, transactions, categoryById, loadingData } = useApp();
   const [period, setPeriod] = useState<Period>(() => ({ mode: "month", ym: currentYM() }));
 
-  const prevPeriod = useMemo<Period>(
-    () =>
-      period.mode === "month"
-        ? { mode: "month", ym: shiftYM(period.ym, -1) }
-        : { mode: "year", y: period.y - 1 },
-    [period]
-  );
+  const prevPeriod = useMemo<Period>(() => {
+    if (period.mode === "month") return { mode: "month", ym: shiftYM(period.ym, -1) };
+    if (period.mode === "year") return { mode: "year", y: period.y - 1 };
+    // the equally-long window ending the day before this range starts
+    const to = addDays(period.from, -1);
+    return { mode: "range", from: addDays(to, -(rangeDays(period.from, period.to) - 1)), to };
+  }, [period]);
 
   const cur = useMemo(() => totalsFor(transactions, period), [transactions, period]);
   const prev = useMemo(() => totalsFor(transactions, prevPeriod), [transactions, prevPeriod]);
 
   const trend = useMemo(() => {
-    if (period.mode === "year") {
+    if (period.mode !== "month") {
       return buildBarSeries(transactions, period, MONTHS[locale].map((m) => m.slice(0, 3)));
     }
     const out: { label: string; income: number; expense: number }[] = [];
@@ -66,7 +66,7 @@ export default function InsightsPage() {
     let days: number;
     if (period.mode === "month") {
       days = period.ym === currentYM() ? now.getDate() : daysInMonthYM(period.ym);
-    } else {
+    } else if (period.mode === "year") {
       const leap = (period.y % 4 === 0 && period.y % 100 !== 0) || period.y % 400 === 0;
       days =
         period.y === now.getFullYear()
@@ -74,11 +74,18 @@ export default function InsightsPage() {
           : leap
           ? 366
           : 365;
+    } else {
+      // only count days elapsed so an ongoing range isn't understated
+      const today = todayISO();
+      const end = period.to < today ? period.to : today;
+      days = end < period.from ? 1 : rangeDays(period.from, end);
     }
     return { list, biggest, count, avgDaily: cur.expenses / Math.max(1, days) };
   }, [transactions, period, categoryById, cur.expenses]);
 
-  const vsLabel = t(period.mode === "year" ? "vsPrevYear" : "vsPrev");
+  const vsLabel = t(
+    period.mode === "year" ? "vsPrevYear" : period.mode === "range" ? "vsPrevPeriod" : "vsPrev"
+  );
   const empty = transactions.length === 0;
 
   return (

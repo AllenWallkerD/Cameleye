@@ -64,7 +64,7 @@ export function BarChart({
           const active = hover === i;
           return (
             <g
-              key={d.label}
+              key={i}
               onMouseEnter={() => setHover(i)}
               onMouseLeave={() => setHover(null)}
             >

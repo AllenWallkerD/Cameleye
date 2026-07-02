@@ -1,7 +1,11 @@
 export type CatType = "income" | "expense";
 
-// A selected time window. ym is "YYYY-MM"; year mode aggregates a whole year.
-export type Period = { mode: "month"; ym: string } | { mode: "year"; y: number };
+// A selected time window. `month` uses ym "YYYY-MM"; `year` aggregates a whole
+// year; `range` is a custom inclusive span of ISO dates (from ≤ to).
+export type Period =
+  | { mode: "month"; ym: string }
+  | { mode: "year"; y: number }
+  | { mode: "range"; from: string; to: string };
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
@@ -114,9 +118,31 @@ export const GOAL_SUGGESTIONS: { key: string; color: string }[] = [
 ];
 
 export function inPeriod(date: string, period: Period): boolean {
-  return period.mode === "month"
-    ? date.slice(0, 7) === period.ym
-    : date.slice(0, 4) === String(period.y);
+  if (period.mode === "month") return date.slice(0, 7) === period.ym;
+  if (period.mode === "year") return date.slice(0, 4) === String(period.y);
+  return date >= period.from && date <= period.to;
+}
+
+// ISO date shifted by N days (calendar-correct, no mutation surprises).
+export function addDays(iso: string, delta: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(y, m - 1, d + delta);
+  return `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`;
+}
+
+// Inclusive number of days between two ISO dates (from..to).
+export function rangeDays(from: string, to: string): number {
+  const [fy, fm, fd] = from.split("-").map(Number);
+  const [ty, tm, td] = to.split("-").map(Number);
+  return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86400000) + 1;
+}
+
+// Monthly budget limits are scaled to the selected window: 1× for a month,
+// 12× for a year, and ~days/30.44 for a custom range.
+export function budgetMultiplier(period: Period): number {
+  if (period.mode === "month") return 1;
+  if (period.mode === "year") return 12;
+  return rangeDays(period.from, period.to) / 30.4375;
 }
 
 // Income/expense series for the bar chart: per-day when a single month is
@@ -140,6 +166,45 @@ export function buildBarSeries(
       if (d < 0 || d >= days) continue;
       if (x.type === "income") arr[d].income += x.amountKzt;
       else arr[d].expense += x.amountKzt;
+    }
+    return arr;
+  }
+  if (period.mode === "range") {
+    const span = rangeDays(period.from, period.to);
+    // short spans read best per-day; longer ones bucket per-month
+    if (span <= 45) {
+      const idx = new Map<string, number>();
+      const arr = Array.from({ length: span }, (_, i) => {
+        const iso = addDays(period.from, i);
+        idx.set(iso, i);
+        return { label: String(Number(iso.slice(8, 10))), income: 0, expense: 0 };
+      });
+      for (const x of transactions) {
+        const i = idx.get(x.date);
+        if (i === undefined) continue;
+        if (x.type === "income") arr[i].income += x.amountKzt;
+        else arr[i].expense += x.amountKzt;
+      }
+      return arr;
+    }
+    const [fy, fm] = period.from.split("-").map(Number);
+    const [ty, tm] = period.to.split("-").map(Number);
+    const startIdx = fy * 12 + (fm - 1);
+    const endIdx = ty * 12 + (tm - 1);
+    const multiYear = fy !== ty;
+    const arr = [];
+    for (let i = startIdx; i <= endIdx; i++) {
+      const mi = ((i % 12) + 12) % 12;
+      const label = multiYear ? `${monthsShort[mi]} ${String(Math.floor(i / 12)).slice(2)}` : monthsShort[mi];
+      arr.push({ label, income: 0, expense: 0 });
+    }
+    for (const x of transactions) {
+      if (x.date < period.from || x.date > period.to) continue;
+      const [xy, xm] = x.date.split("-").map(Number);
+      const i = xy * 12 + (xm - 1) - startIdx;
+      if (i < 0 || i >= arr.length) continue;
+      if (x.type === "income") arr[i].income += x.amountKzt;
+      else arr[i].expense += x.amountKzt;
     }
     return arr;
   }
