@@ -1,8 +1,10 @@
 export type CatType = "income" | "expense";
 
-// A selected time window. `month` uses ym "YYYY-MM"; `year` aggregates a whole
-// year; `range` is a custom inclusive span of ISO dates (from ≤ to).
+// A selected time window. `day` is a single ISO date; `month` uses ym
+// "YYYY-MM"; `year` aggregates a whole year; `range` is a custom inclusive
+// span of ISO dates (from ≤ to).
 export type Period =
+  | { mode: "day"; date: string }
   | { mode: "month"; ym: string }
   | { mode: "year"; y: number }
   | { mode: "range"; from: string; to: string };
@@ -118,6 +120,7 @@ export const GOAL_SUGGESTIONS: { key: string; color: string }[] = [
 ];
 
 export function inPeriod(date: string, period: Period): boolean {
+  if (period.mode === "day") return date === period.date;
   if (period.mode === "month") return date.slice(0, 7) === period.ym;
   if (period.mode === "year") return date.slice(0, 4) === String(period.y);
   return date >= period.from && date <= period.to;
@@ -142,6 +145,7 @@ export function rangeDays(from: string, to: string): number {
 export function budgetMultiplier(period: Period): number {
   if (period.mode === "month") return 1;
   if (period.mode === "year") return 12;
+  if (period.mode === "day") return 1 / 30.4375;
   return rangeDays(period.from, period.to) / 30.4375;
 }
 
@@ -152,6 +156,16 @@ export function buildBarSeries(
   period: Period,
   monthsShort: string[]
 ): { label: string; income: number; expense: number }[] {
+  if (period.mode === "day") {
+    let income = 0;
+    let expense = 0;
+    for (const x of transactions) {
+      if (x.date !== period.date) continue;
+      if (x.type === "income") income += x.amountKzt;
+      else expense += x.amountKzt;
+    }
+    return [{ label: String(Number(period.date.slice(8, 10))), income, expense }];
+  }
   if (period.mode === "month") {
     const [y, m] = period.ym.split("-").map(Number); // m is 1-based
     const days = new Date(y, m, 0).getDate();
