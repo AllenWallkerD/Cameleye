@@ -18,7 +18,6 @@ export default function InsightsPage() {
   const [monthTrend, setMonthTrend] = useState<"days" | "months">("days");
 
   const prevPeriod = useMemo<Period>(() => {
-    if (period.mode === "day") return { mode: "day", date: addDays(period.date, -1) };
     if (period.mode === "month") return { mode: "month", ym: shiftYM(period.ym, -1) };
     if (period.mode === "year") return { mode: "year", y: period.y - 1 };
     // the equally-long window ending the day before this range starts
@@ -73,9 +72,7 @@ export default function InsightsPage() {
     // divide by days *elapsed* so the current month/year isn't understated
     const now = new Date();
     let days: number;
-    if (period.mode === "day") {
-      days = 1;
-    } else if (period.mode === "month") {
+    if (period.mode === "month") {
       days = period.ym === currentYM() ? now.getDate() : daysInMonthYM(period.ym);
     } else if (period.mode === "year") {
       const leap = (period.y % 4 === 0 && period.y % 100 !== 0) || period.y % 400 === 0;
@@ -95,13 +92,7 @@ export default function InsightsPage() {
   }, [transactions, period, categoryById, cur.expenses]);
 
   const vsLabel = t(
-    period.mode === "year"
-      ? "vsPrevYear"
-      : period.mode === "day"
-      ? "vsPrevDay"
-      : period.mode === "range"
-      ? "vsPrevPeriod"
-      : "vsPrev"
+    period.mode === "year" ? "vsPrevYear" : period.mode === "range" ? "vsPrevPeriod" : "vsPrev"
   );
   const empty = transactions.length === 0;
 
