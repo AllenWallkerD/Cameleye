@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useApp } from "@/components/app-provider";
 import { SummaryCards } from "@/components/summary-cards";
-import { PeriodTabs, currentYM, periodLabel, type Period } from "@/components/period-tabs";
+import { PeriodTabs, periodLabel } from "@/components/period-tabs";
 import { TransactionsTable } from "@/components/transactions-table";
 import { BarChart } from "@/components/charts/bar-chart";
 import { DonutChart } from "@/components/charts/donut-chart";
@@ -16,8 +16,8 @@ import { buildBarSeries, budgetMultiplier, inPeriod, shiftYM } from "@/lib/data"
 import { formatMoney } from "@/lib/currency";
 
 export default function DashboardPage() {
-  const { t, locale, currency, transactions, categoryById, budgets, loadingData } = useApp();
-  const [period, setPeriod] = useState<Period>(() => ({ mode: "month", ym: currentYM() }));
+  const { t, locale, currency, transactions, categoryById, budgets, loadingData, period, setPeriod } =
+    useApp();
 
   const filtered = useMemo(
     () => transactions.filter((x) => inPeriod(x.date, period)),

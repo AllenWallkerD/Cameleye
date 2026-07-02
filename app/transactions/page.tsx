@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useApp } from "@/components/app-provider";
 import { TransactionsTable } from "@/components/transactions-table";
-import { PeriodTabs, currentYM, type Period } from "@/components/period-tabs";
+import { PeriodTabs } from "@/components/period-tabs";
 import { Skeleton } from "@/components/skeleton";
 import { Icon } from "@/components/icons";
 import { inPeriod } from "@/lib/data";
@@ -11,8 +11,8 @@ import { inPeriod } from "@/lib/data";
 type Filter = "all" | "income" | "expense";
 
 export default function TransactionsPage() {
-  const { t, transactions, categoryById, search, setSearch, loadingData } = useApp();
-  const [period, setPeriod] = useState<Period>(() => ({ mode: "month", ym: currentYM() }));
+  const { t, transactions, categoryById, search, setSearch, loadingData, period, setPeriod } =
+    useApp();
   const [filter, setFilter] = useState<Filter>("all");
   const q = search.trim().toLowerCase();
 

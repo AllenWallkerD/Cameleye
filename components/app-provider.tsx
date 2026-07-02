@@ -28,6 +28,7 @@ import {
   type CategoryMeta,
   type CatType,
   type Goal,
+  type Period,
   type Recurring,
   type Transaction,
 } from "@/lib/data";
@@ -75,6 +76,8 @@ type Ctx = {
   setCurrency: (c: CurrencyCode) => void;
   theme: Theme;
   toggleTheme: () => void;
+  period: Period;
+  setPeriod: (p: Period) => void;
   email: string | undefined;
   displayName: string | undefined;
   signOut: () => Promise<void>;
@@ -139,6 +142,22 @@ function writePref(key: string, value: string) {
   }
 }
 
+// the selected period is a small object, so it needs JSON (not readPref's enums)
+function readPeriod(): Period {
+  const fallback: Period = { mode: "month", ym: currentYM() };
+  if (typeof window === "undefined") return fallback;
+  try {
+    const p = JSON.parse(window.localStorage.getItem("cameleye.period") ?? "");
+    if (p?.mode === "month" && typeof p.ym === "string") return { mode: "month", ym: p.ym };
+    if (p?.mode === "year" && typeof p.y === "number") return { mode: "year", y: p.y };
+    if (p?.mode === "range" && typeof p.from === "string" && typeof p.to === "string")
+      return { mode: "range", from: p.from, to: p.to };
+  } catch {
+    /* fall through */
+  }
+  return fallback;
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [supabase] = useState(() => createClient());
 
@@ -151,6 +170,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() =>
     readPref("cameleye.theme", ["light", "dark"], "light")
   );
+  // period is shared across pages so a chosen month/year/range follows the user
+  const [period, setPeriod] = useState<Period>(readPeriod);
 
   const [session, setSession] = useState<Session | null>(null);
   const [authReady, setAuthReady] = useState(false);
@@ -218,6 +239,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     document.documentElement.lang = locale;
   }, [locale]);
   useEffect(() => writePref("cameleye.currency", currency), [currency]);
+  useEffect(() => writePref("cameleye.period", JSON.stringify(period)), [period]);
 
   // auth bootstrap + subscription. Also shows the quick guide once, on a user's
   // very first authenticated visit (tracked in localStorage).
@@ -830,6 +852,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setCurrency,
     theme,
     toggleTheme: () => setTheme((p) => (p === "light" ? "dark" : "light")),
+    period,
+    setPeriod,
     email: session?.user?.email,
     displayName:
       (session?.user?.user_metadata?.display_name as string | undefined) ||

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useApp } from "@/components/app-provider";
-import { PeriodTabs, currentYM, type Period } from "@/components/period-tabs";
+import { PeriodTabs } from "@/components/period-tabs";
 import { CategoryIcon } from "@/components/category-icons";
 import { AddBudgetDrawer } from "@/components/add-budget-drawer";
 import { Icon } from "@/components/icons";
@@ -10,8 +10,8 @@ import { budgetMultiplier, inPeriod } from "@/lib/data";
 import { formatMoney } from "@/lib/currency";
 
 export default function BudgetsPage() {
-  const { t, currency, transactions, categoryById, budgets, removeBudget, confirm } = useApp();
-  const [period, setPeriod] = useState<Period>(() => ({ mode: "month", ym: currentYM() }));
+  const { t, currency, transactions, categoryById, budgets, removeBudget, confirm, period, setPeriod } =
+    useApp();
   const [open, setOpen] = useState(false);
   const [editCat, setEditCat] = useState<string | null>(null);
 

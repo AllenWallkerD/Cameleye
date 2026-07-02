@@ -12,8 +12,8 @@ import { addDays, buildBarSeries, daysInMonthYM, inPeriod, rangeDays, shiftYM } 
 import { formatMoney } from "@/lib/currency";
 
 export default function InsightsPage() {
-  const { t, locale, currency, transactions, categoryById, loadingData } = useApp();
-  const [period, setPeriod] = useState<Period>(() => ({ mode: "month", ym: currentYM() }));
+  const { t, locale, currency, transactions, categoryById, loadingData, period, setPeriod } =
+    useApp();
   // in month mode the trend can show the month day-by-day or the last 6 months
   const [monthTrend, setMonthTrend] = useState<"days" | "months">("days");
 
