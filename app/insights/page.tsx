@@ -14,6 +14,8 @@ import { formatMoney } from "@/lib/currency";
 export default function InsightsPage() {
   const { t, locale, currency, transactions, categoryById, loadingData } = useApp();
   const [period, setPeriod] = useState<Period>(() => ({ mode: "month", ym: currentYM() }));
+  // in month mode the trend can show the month day-by-day or the last 6 months
+  const [monthTrend, setMonthTrend] = useState<"days" | "months">("days");
 
   const prevPeriod = useMemo<Period>(() => {
     if (period.mode === "day") return { mode: "day", date: addDays(period.date, -1) };
@@ -28,9 +30,15 @@ export default function InsightsPage() {
   const prev = useMemo(() => totalsFor(transactions, prevPeriod), [transactions, prevPeriod]);
 
   const trend = useMemo(() => {
-    if (period.mode !== "month") {
-      return buildBarSeries(transactions, period, MONTHS[locale].map((m) => m.slice(0, 3)));
+    const monthsShort = MONTHS[locale].map((m) => m.slice(0, 3));
+    // per-day within the selected month (same series the dashboard uses)
+    if (period.mode === "month" && monthTrend === "days") {
+      return buildBarSeries(transactions, period, monthsShort);
     }
+    if (period.mode !== "month") {
+      return buildBarSeries(transactions, period, monthsShort);
+    }
+    // last 6 months ending on the selected month
     const out: { label: string; income: number; expense: number }[] = [];
     for (let i = 5; i >= 0; i--) {
       const ym = shiftYM(period.ym, -i);
@@ -41,10 +49,10 @@ export default function InsightsPage() {
         if (x.type === "income") income += x.amountKzt;
         else expense += x.amountKzt;
       }
-      out.push({ label: MONTHS[locale][Number(ym.slice(5)) - 1].slice(0, 3), income, expense });
+      out.push({ label: monthsShort[Number(ym.slice(5)) - 1], income, expense });
     }
     return out;
-  }, [transactions, period, locale]);
+  }, [transactions, period, locale, monthTrend]);
 
   const top = useMemo(() => {
     const m = new Map<string, number>();
@@ -124,7 +132,24 @@ export default function InsightsPage() {
 
           {/* trend */}
           <section className="rounded-2xl border bg-card p-5 shadow-sm">
-            <h2 className="mb-4 font-semibold">{t("insights.trend")}</h2>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="font-semibold">{t("insights.trend")}</h2>
+              {period.mode === "month" && (
+                <div className="flex items-center rounded-xl border bg-card p-0.5">
+                  {(["days", "months"] as const).map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => setMonthTrend(v)}
+                      className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                        monthTrend === v ? "bg-accent-soft text-accent" : "text-fg-muted hover:text-fg"
+                      }`}
+                    >
+                      {t(v === "days" ? "trend.days" : "trend.months")}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <BarChart data={trend} currency={currency} />
           </section>
 
