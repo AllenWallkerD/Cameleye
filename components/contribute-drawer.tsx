@@ -10,12 +10,14 @@ import type { Goal } from "@/lib/data";
 
 export function ContributeDrawer({
   goal,
+  mode = "add",
   onClose,
 }: {
   goal: Goal | null;
+  mode?: "add" | "withdraw";
   onClose: () => void;
 }) {
-  const { t, currency, contributeToGoal } = useApp();
+  const { t, currency, contributeToGoal, withdrawFromGoal } = useApp();
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(todayISO);
   const [busy, setBusy] = useState(false);
@@ -24,16 +26,20 @@ export function ContributeDrawer({
 
   if (!goal) return null;
 
+  const isWithdraw = mode === "withdraw";
   const left = Math.max(0, goal.targetKzt - goal.savedKzt);
 
   async function submit() {
     if (!goal) return;
     const value = parseAmountInput(amount);
     if (value <= 0) return;
-    const amountKzt = value / CURRENCIES[currency].ratePerKzt;
+    let amountKzt = value / CURRENCIES[currency].ratePerKzt;
     if (amountKzt > MAX_AMOUNT_KZT) return;
+    // can't pull out more than the goal holds
+    if (isWithdraw) amountKzt = Math.min(amountKzt, goal.savedKzt);
+    if (amountKzt <= 0) return;
     setBusy(true);
-    await contributeToGoal(goal.id, amountKzt, date);
+    await (isWithdraw ? withdrawFromGoal : contributeToGoal)(goal.id, amountKzt, date);
     setBusy(false);
     setAmount("");
     onClose();
@@ -51,7 +57,9 @@ export function ContributeDrawer({
       >
         <div className="flex items-center justify-between border-b px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold">{t("goals.addMoney")}</h2>
+            <h2 className="text-lg font-semibold">
+              {isWithdraw ? t("goals.withdraw") : t("goals.addMoney")}
+            </h2>
             <p className="text-sm text-fg-muted">{goal.title}</p>
           </div>
           <button onClick={onClose} className="rounded-lg p-1.5 text-fg-muted hover:text-fg">
@@ -66,8 +74,12 @@ export function ContributeDrawer({
               <span className="font-medium tabular-nums">{formatMoney(goal.savedKzt, currency)}</span>
             </div>
             <div className="mt-1.5 flex justify-between">
-              <span className="text-fg-muted">{t("goals.left")}</span>
-              <span className="font-medium tabular-nums">{formatMoney(left, currency)}</span>
+              <span className="text-fg-muted">
+                {isWithdraw ? t("goals.available") : t("goals.left")}
+              </span>
+              <span className="font-medium tabular-nums">
+                {formatMoney(isWithdraw ? goal.savedKzt : left, currency)}
+              </span>
             </div>
           </div>
 
@@ -94,7 +106,9 @@ export function ContributeDrawer({
 
           <p className="text-xs text-fg-muted">
             {/* makes the savings flow explicit */}
-            → {t("tx.expense")} · {t("cat.savings")}
+            {isWithdraw
+              ? `← ${t("tx.income")} · ${t("cat.savings")}`
+              : `→ ${t("tx.expense")} · ${t("cat.savings")}`}
           </p>
         </div>
 

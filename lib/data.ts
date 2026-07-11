@@ -125,6 +125,13 @@ export const GOAL_SUGGESTIONS: { key: string; color: string }[] = [
   { key: "chinese", color: "#f59e0b" },
 ];
 
+// A goal-linked transaction's signed effect on the goal's saved total:
+// a contribution (expense — money set aside) adds; a withdrawal (income — money
+// pulled back out of savings) subtracts.
+export function goalDelta(tx: Transaction): number {
+  return tx.type === "expense" ? tx.amountKzt : -tx.amountKzt;
+}
+
 export function inPeriod(date: string, period: Period): boolean {
   if (period.mode === "month") return date.slice(0, 7) === period.ym;
   if (period.mode === "year") return date.slice(0, 4) === String(period.y);

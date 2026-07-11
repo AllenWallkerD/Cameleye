@@ -15,11 +15,13 @@ export function TransactionsTable({
   full = false,
   viewAllHref,
   selectable = false,
+  title,
 }: {
   items: Transaction[];
   full?: boolean;
   viewAllHref?: string;
   selectable?: boolean;
+  title?: string;
 }) {
   const { t, locale, currency, categoryById, removeTransaction, removeTransactions, confirm } =
     useApp();
@@ -58,7 +60,7 @@ export function TransactionsTable({
   return (
     <section className="rounded-2xl border bg-card shadow-sm">
       <div className="flex items-center justify-between border-b px-5 py-4">
-        <h2 className="font-semibold">{t("tx.title")}</h2>
+        <h2 className="font-semibold">{title ?? t("tx.title")}</h2>
         <div className="flex items-center gap-3">
           {selectable && items.length > 0 && !selectMode && (
             <button

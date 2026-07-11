@@ -18,6 +18,7 @@ import {
   DEFAULT_CATEGORIES,
   currentYM,
   daysInMonthYM,
+  goalDelta,
   rowToBudget,
   rowToCategory,
   rowToGoal,
@@ -117,6 +118,7 @@ type Ctx = {
   updateGoal: (id: string, patch: NewGoal) => Promise<void>;
   removeGoal: (id: string, deleteTransactions?: boolean) => Promise<void>;
   contributeToGoal: (goalId: string, amountKzt: number, date: string) => Promise<void>;
+  withdrawFromGoal: (goalId: string, amountKzt: number, date: string) => Promise<void>;
   addCategory: (c: NewCategory) => Promise<CategoryMeta | null>;
   updateCategory: (id: string, patch: NewCategory) => Promise<void>;
   removeCategory: (id: string) => Promise<void>;
@@ -671,9 +673,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setTransactions((prev) =>
           prev.map((x) => (x.id === id ? updated : x)).sort((a, b) => (a.date < b.date ? 1 : -1))
         );
-        // if this was a goal contribution and the amount changed, move the goal
+        // if this is a goal-linked tx, re-sync the goal by the change in its
+        // signed effect (handles amount AND income/expense direction changes)
         if (updated.goalId) {
-          await adjustGoalSaved(updated.goalId, updated.amountKzt - (before?.amountKzt ?? 0));
+          await adjustGoalSaved(updated.goalId, goalDelta(updated) - (before ? goalDelta(before) : 0));
         }
         toast(t("toast.updated"));
       } else {
@@ -688,7 +691,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const removed = transactions.find((x) => x.id === id);
       setTransactions((prev) => prev.filter((x) => x.id !== id));
       const { error } = await supabase.from("transactions").delete().eq("id", id);
-      if (!error && removed?.goalId) await adjustGoalSaved(removed.goalId, -removed.amountKzt);
+      if (!error && removed?.goalId) await adjustGoalSaved(removed.goalId, -goalDelta(removed));
       toast(error ? t("toast.error") : t("toast.deleted"), error ? "err" : "ok");
     },
     [supabase, toast, t, transactions, adjustGoalSaved]
@@ -702,7 +705,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const perGoal = new Map<string, number>();
       for (const x of transactions) {
         if (idSet.has(x.id) && x.goalId) {
-          perGoal.set(x.goalId, (perGoal.get(x.goalId) ?? 0) + x.amountKzt);
+          perGoal.set(x.goalId, (perGoal.get(x.goalId) ?? 0) + goalDelta(x));
         }
       }
       setTransactions((prev) => prev.filter((x) => !idSet.has(x.id)));
@@ -812,6 +815,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
 
       const newSaved = (goal?.savedKzt ?? 0) + amountKzt;
+      setGoals((prev) =>
+        prev.map((g) => (g.id === goalId ? { ...g, savedKzt: newSaved } : g))
+      );
+      await supabase.from("goals").update({ saved_kzt: newSaved }).eq("id", goalId);
+      toast(t("toast.added"));
+    },
+    [supabase, userId, goals, toast, t]
+  );
+
+  // Taking money back out of a goal (e.g. an emergency): records an income
+  // transaction — the cash returns to your spendable balance — and walks the
+  // goal's progress back down (never below zero).
+  const withdrawFromGoal = useCallback(
+    async (goalId: string, amountKzt: number, date: string) => {
+      if (!userId || amountKzt <= 0) return;
+      const goal = goals.find((g) => g.id === goalId);
+
+      const { data } = await supabase
+        .from("transactions")
+        .insert({
+          user_id: userId,
+          type: "income",
+          category: "savings",
+          amount_kzt: amountKzt,
+          note: goal?.title ?? "",
+          occurred_on: date,
+          goal_id: goalId,
+        })
+        .select("id,type,category,amount_kzt,note,occurred_on,goal_id")
+        .single();
+      if (data) {
+        setTransactions((prev) =>
+          [rowToTransaction(data), ...prev].sort((a, b) => (a.date < b.date ? 1 : -1))
+        );
+      }
+
+      const newSaved = Math.max(0, (goal?.savedKzt ?? 0) - amountKzt);
       setGoals((prev) =>
         prev.map((g) => (g.id === goalId ? { ...g, savedKzt: newSaved } : g))
       );
@@ -932,6 +972,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateGoal,
     removeGoal,
     contributeToGoal,
+    withdrawFromGoal,
     addCategory,
     updateCategory,
     removeCategory,
