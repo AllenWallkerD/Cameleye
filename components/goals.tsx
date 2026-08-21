@@ -4,12 +4,15 @@ import { useState } from "react";
 import Link from "next/link";
 import { useApp } from "./app-provider";
 import { Icon } from "./icons";
+import { formatDateShort, todayISO } from "./date-picker";
 import { formatMoney } from "@/lib/currency";
+import { forecast, formatDurationShort, savingRate } from "@/lib/goal-time";
 import { AddGoalDrawer } from "./add-goal-drawer";
 
 export function Goals() {
-  const { t, currency, goals } = useApp();
+  const { t, locale, currency, goals, transactions } = useApp();
   const [open, setOpen] = useState(false);
+  const today = todayISO();
 
   return (
     <section className="rounded-2xl border bg-card p-5 shadow-sm">
@@ -46,6 +49,7 @@ export function Goals() {
           {goals.map((g) => {
             const pct = g.targetKzt > 0 ? Math.min(100, Math.round((g.savedKzt / g.targetKzt) * 100)) : 0;
             const left = Math.max(0, g.targetKzt - g.savedKzt);
+            const fc = forecast(g, savingRate(g, transactions, today), today);
             return (
               <Link
                 key={g.id}
@@ -53,7 +57,14 @@ export function Goals() {
                 className="group flex flex-col rounded-xl border bg-card-muted p-4 transition-colors hover:border-accent/60"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <p className="text-sm font-medium leading-snug">{g.title}</p>
+                  <p className="min-w-0 text-sm font-medium leading-snug">
+                    {g.title}
+                    {g.isPrimary && (
+                      <span className="ml-2 rounded-full bg-accent-soft px-2 py-0.5 align-middle text-[10px] font-medium text-accent">
+                        {t("goals.primary")}
+                      </span>
+                    )}
+                  </p>
                   <div className="flex shrink-0 items-center gap-1.5">
                     <span className="text-sm font-semibold tabular-nums" style={{ color: g.color }}>
                       {pct}%
@@ -81,6 +92,24 @@ export function Goals() {
                     {formatMoney(left, currency, { compact: true })} {t("goals.left")}
                   </span>
                 </div>
+
+                {/* the date this goal actually lands on at its current pace */}
+                {fc.done ? (
+                  <p className="mt-2 text-xs font-medium text-pos">{t("goal.done")}</p>
+                ) : (
+                  fc.etaIso && (
+                    <p className="mt-2 truncate text-xs text-fg-muted">
+                      {t("time.eta")} — {formatDateShort(fc.etaIso, locale)}
+                      {fc.driftDays !== null && (
+                        <span style={{ color: fc.driftDays > 0 ? "var(--neg)" : "var(--pos)" }}>
+                          {" "}
+                          · {t(fc.driftDays > 0 ? "goal.behind" : "goal.ahead")}{" "}
+                          {formatDurationShort(Math.abs(fc.driftDays), t)}
+                        </span>
+                      )}
+                    </p>
+                  )
+                )}
               </Link>
             );
           })}

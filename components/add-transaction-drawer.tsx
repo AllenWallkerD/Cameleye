@@ -8,6 +8,7 @@ import { AddCategoryDrawer } from "./add-category-drawer";
 import { DatePicker, MIN_PICKABLE_DATE, todayISO } from "./date-picker";
 import { CURRENCIES, MAX_AMOUNT_KZT, convert, groupAmountInput, parseAmountInput } from "@/lib/currency";
 import { useModal } from "@/lib/use-modal";
+import { daysFor, formatDuration } from "@/lib/goal-time";
 import type { CatType, Transaction } from "@/lib/data";
 
 export function AddTransactionDrawer({
@@ -19,7 +20,7 @@ export function AddTransactionDrawer({
   onClose: () => void;
   editing?: Transaction | null;
 }) {
-  const { t, currency, categories, addTransaction, updateTransaction } = useApp();
+  const { t, currency, categories, primaryGoal, rate, addTransaction, updateTransaction } = useApp();
   const firstOfType = (ty: CatType) => categories.find((c) => c.type === ty)?.id ?? "";
   const [type, setType] = useState<CatType>(editing?.type ?? "expense");
   const [category, setCategory] = useState<string>(
@@ -34,6 +35,12 @@ export function AddTransactionDrawer({
   const [catDrawer, setCatDrawer] = useState(false);
 
   const cats = categories.filter((c) => c.type === type);
+
+  // money set aside isn't a setback, so "savings" is left out of the conversion
+  const timeCost =
+    type === "expense" && category !== "savings"
+      ? daysFor(parseAmountInput(amount) / CURRENCIES[currency].ratePerKzt, rate)
+      : null;
 
   // switching type also picks a valid category for it (no effect needed)
   function selectType(ty: CatType) {
@@ -105,6 +112,14 @@ export function AddTransactionDrawer({
                 autoFocus
               />
             </div>
+            {/* the price of this expense in goal-time, live as you type */}
+            {timeCost !== null && primaryGoal && (
+              <p className="text-xs text-fg-muted">
+                {t("time.cost")}{" "}
+                <span className="font-semibold text-fg">{formatDuration(timeCost, t)}</span>
+                <span className="opacity-70"> · {primaryGoal.title}</span>
+              </p>
+            )}
           </Field>
 
           <Field label={t("tx.category")}>

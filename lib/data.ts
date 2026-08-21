@@ -72,6 +72,9 @@ export type Goal = {
   targetKzt: number;
   savedKzt: number;
   color: string;
+  monthlyKzt: number; // planned monthly contribution — drives the "time" math
+  deadline: string | null; // ISO date the user wants to make it by
+  isPrimary: boolean; // the goal every expense is measured against (max 1/user)
 };
 
 export type Recurring = {
@@ -278,6 +281,9 @@ type GoalRow = {
   target_kzt: number | string;
   saved_kzt: number | string;
   color: string;
+  monthly_kzt?: number | string | null;
+  deadline?: string | null;
+  is_primary?: boolean | null;
 };
 
 export function rowToGoal(r: GoalRow): Goal {
@@ -288,7 +294,16 @@ export function rowToGoal(r: GoalRow): Goal {
     targetKzt: Number(r.target_kzt),
     savedKzt: Number(r.saved_kzt),
     color: safeColor(r.color, "#a78bfa"),
+    monthlyKzt: Number(r.monthly_kzt ?? 0),
+    deadline: r.deadline ?? null,
+    isPrimary: !!r.is_primary,
   };
+}
+
+// The goal every expense gets measured against: the one the user pinned, else
+// the oldest (goals arrive ordered by created_at).
+export function pickPrimary(goals: Goal[]): Goal | null {
+  return goals.find((g) => g.isPrimary) ?? goals[0] ?? null;
 }
 
 type CatRow = {

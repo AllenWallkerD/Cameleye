@@ -39,6 +39,20 @@ create table if not exists public.goals (
   created_at  timestamptz not null default now()
 );
 
+-- "Копилка" columns: the planned monthly pace (what turns money into days),
+-- an optional target date, and the single goal every expense is measured
+-- against. Added separately so existing databases can just re-run this file.
+alter table public.goals
+  add column if not exists monthly_kzt numeric(14, 2) not null default 0 check (monthly_kzt >= 0);
+alter table public.goals
+  add column if not exists deadline date;
+alter table public.goals
+  add column if not exists is_primary boolean not null default false;
+
+-- At most one primary goal per user (partial index — non-primary rows are free).
+create unique index if not exists goals_one_primary_per_user
+  on public.goals (user_id) where is_primary;
+
 -- Link a transaction to the goal it contributes to (a "savings" expense).
 -- The FK is COMPOSITE (goal_id, user_id) → goals (id, user_id) so a user can
 -- only ever link to their OWN goal — a plain goal_id FK would validate against
@@ -118,6 +132,8 @@ alter table public.goals drop constraint if exists goals_target_max;
 alter table public.goals add constraint goals_target_max check (target_kzt <= 100000000000);
 alter table public.goals drop constraint if exists goals_saved_max;
 alter table public.goals add constraint goals_saved_max check (saved_kzt <= 100000000000);
+alter table public.goals drop constraint if exists goals_monthly_max;
+alter table public.goals add constraint goals_monthly_max check (monthly_kzt <= 100000000000);
 alter table public.recurring drop constraint if exists recurring_amount_max;
 alter table public.recurring add constraint recurring_amount_max check (amount_kzt <= 100000000000);
 alter table public.budgets drop constraint if exists budgets_limit_max;

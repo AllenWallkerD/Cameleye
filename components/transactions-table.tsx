@@ -8,6 +8,7 @@ import { CategoryIcon } from "./category-icons";
 import { formatDateShort } from "./date-picker";
 import { AddTransactionDrawer } from "./add-transaction-drawer";
 import { formatMoney } from "@/lib/currency";
+import { daysFor, formatDurationShort } from "@/lib/goal-time";
 import { type Transaction } from "@/lib/data";
 
 export function TransactionsTable({
@@ -23,7 +24,7 @@ export function TransactionsTable({
   selectable?: boolean;
   title?: string;
 }) {
-  const { t, locale, currency, categoryById, removeTransaction, removeTransactions, confirm } =
+  const { t, locale, currency, rate, categoryById, removeTransaction, removeTransactions, confirm } =
     useApp();
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [selectMode, setSelectMode] = useState(false);
@@ -105,6 +106,11 @@ export function TransactionsTable({
             const cat = categoryById(tx.category);
             const income = tx.type === "income";
             const checked = selected.has(tx.id);
+            // savings moves and goal transfers aren't setbacks — no time tag
+            const cost =
+              tx.type === "expense" && !tx.goalId && tx.category !== "savings"
+                ? daysFor(tx.amountKzt, rate)
+                : null;
             return (
               <li
                 key={tx.id}
@@ -141,12 +147,20 @@ export function TransactionsTable({
                   </p>
                 </div>
 
-                <span
-                  className="shrink-0 text-sm font-semibold tabular-nums"
-                  style={{ color: income ? "var(--pos)" : "var(--fg)" }}
-                >
-                  {income ? "+" : "−"}
-                  {formatMoney(tx.amountKzt, currency)}
+                <span className="flex shrink-0 flex-col items-end">
+                  <span
+                    className="text-sm font-semibold tabular-nums"
+                    style={{ color: income ? "var(--pos)" : "var(--fg)" }}
+                  >
+                    {income ? "+" : "−"}
+                    {formatMoney(tx.amountKzt, currency)}
+                  </span>
+                  {/* how much further this expense pushed the goal */}
+                  {cost !== null && (
+                    <span className="text-[11px] tabular-nums text-fg-muted">
+                      +{formatDurationShort(cost, t)}
+                    </span>
+                  )}
                 </span>
 
                 {!selectMode && (

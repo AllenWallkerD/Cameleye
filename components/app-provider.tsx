@@ -19,6 +19,7 @@ import {
   currentYM,
   daysInMonthYM,
   goalDelta,
+  pickPrimary,
   rowToBudget,
   rowToCategory,
   rowToGoal,
@@ -33,6 +34,7 @@ import {
   type Recurring,
   type Transaction,
 } from "@/lib/data";
+import { daysFor, formatDuration, savingRate, type SavingRate } from "@/lib/goal-time";
 import { todayISO } from "./date-picker";
 import { AuthScreen } from "./auth-screen";
 import { AppShell } from "./app-shell";
@@ -60,6 +62,9 @@ type NewGoal = {
   targetKzt: number;
   savedKzt: number;
   color: string;
+  monthlyKzt: number;
+  deadline: string | null;
+  isPrimary: boolean;
 };
 
 type NewCategory = {
@@ -100,6 +105,9 @@ type Ctx = {
   loadingData: boolean;
   transactions: Transaction[];
   goals: Goal[];
+  primaryGoal: Goal | null;
+  setPrimaryGoal: (id: string) => Promise<void>;
+  rate: SavingRate;
   categories: CategoryMeta[];
   categoryById: (id: string) => CategoryMeta;
   budgets: Budget[];
@@ -295,7 +303,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           .order("occurred_on", { ascending: false }),
         supabase
           .from("goals")
-          .select("id,key,title,target_kzt,saved_kzt,color")
+          .select("id,key,title,target_kzt,saved_kzt,color,monthly_kzt,deadline,is_primary")
           .order("created_at", { ascending: true }),
         supabase
           .from("categories")
@@ -374,6 +382,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const table = dict[locale];
     return (key: string) => table[key] ?? key;
   }, [locale]);
+
+  // The goal everything is measured against, and how fast money reaches it.
+  // Both feed the "this expense costs N days" conversions across the app.
+  const primaryGoal = useMemo(() => pickPrimary(goals), [goals]);
+  const rate = useMemo(
+    () => savingRate(primaryGoal, transactions, todayISO()),
+    [primaryGoal, transactions]
+  );
+
+  const setPrimaryGoal = useCallback(
+    async (id: string) => {
+      if (!userId) return;
+      setGoals((prev) => prev.map((g) => ({ ...g, isPrimary: g.id === id })));
+      // clear first, then set: the DB holds a one-primary-per-user unique index,
+      // so the two updates must not overlap
+      await supabase.from("goals").update({ is_primary: false }).eq("user_id", userId).eq("is_primary", true);
+      await supabase.from("goals").update({ is_primary: true }).eq("id", id);
+    },
+    [supabase, userId]
+  );
 
   // built-in categories (localized) + the user's custom ones
   const categories = useMemo<CategoryMeta[]>(() => {
@@ -605,12 +633,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
           }
         }
-        if (!warned) toast(t("toast.added"));
+        // the core "Копилка" feedback: say what this expense just cost in
+        // goal-time. Money moved into savings isn't a setback, so it's excluded.
+        const days =
+          tx.type === "expense" && tx.category !== "savings" ? daysFor(tx.amountKzt, rate) : null;
+        if (warned) return;
+        toast(days ? `${t("time.pushed")} ${formatDuration(days, t)}` : t("toast.added"));
       } else {
         toast(t("toast.error"), "err");
       }
     },
-    [supabase, userId, toast, t, budgets, transactions, categoryById]
+    [supabase, userId, toast, t, budgets, transactions, categoryById, rate]
   );
 
   const importTransactions = useCallback(
@@ -730,17 +763,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
           target_kzt: g.targetKzt,
           saved_kzt: g.savedKzt,
           color: g.color,
+          monthly_kzt: g.monthlyKzt,
+          deadline: g.deadline,
         })
-        .select("id,key,title,target_kzt,saved_kzt,color")
+        .select("id,key,title,target_kzt,saved_kzt,color,monthly_kzt,deadline,is_primary")
         .single();
       if (!error && data) {
         setGoals((prev) => [...prev, rowToGoal(data)]);
+        // the first goal always becomes the primary one — otherwise the whole
+        // "time to goal" UI would have nothing to measure against
+        if (g.isPrimary || goals.length === 0) await setPrimaryGoal(data.id);
         toast(t("toast.added"));
       } else {
         toast(t("toast.error"), "err");
       }
     },
-    [supabase, userId, toast, t]
+    [supabase, userId, toast, t, goals, setPrimaryGoal]
   );
 
   const updateGoal = useCallback(
@@ -750,7 +788,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setGoals((prev) =>
         prev.map((g) =>
           g.id === id
-            ? { ...g, title: patch.title, targetKzt: patch.targetKzt, color: patch.color }
+            ? {
+                ...g,
+                title: patch.title,
+                targetKzt: patch.targetKzt,
+                color: patch.color,
+                monthlyKzt: patch.monthlyKzt,
+                deadline: patch.deadline,
+              }
             : g
         )
       );
@@ -760,11 +805,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
           title: patch.title,
           target_kzt: patch.targetKzt,
           color: patch.color,
+          monthly_kzt: patch.monthlyKzt,
+          deadline: patch.deadline,
         })
         .eq("id", id);
+      if (patch.isPrimary) await setPrimaryGoal(id);
       toast(error ? t("toast.error") : t("toast.updated"), error ? "err" : "ok");
     },
-    [supabase, toast, t]
+    [supabase, toast, t, setPrimaryGoal]
   );
 
   const removeGoal = useCallback(
@@ -819,9 +867,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         prev.map((g) => (g.id === goalId ? { ...g, savedKzt: newSaved } : g))
       );
       await supabase.from("goals").update({ saved_kzt: newSaved }).eq("id", goalId);
-      toast(t("toast.added"));
+      // measured against THIS goal's own pace, not the primary one's
+      const days = daysFor(amountKzt, savingRate(goal ?? null, transactions, todayISO()));
+      toast(days ? `${t("time.closer")} ${formatDuration(days, t)}` : t("toast.added"));
     },
-    [supabase, userId, goals, toast, t]
+    [supabase, userId, goals, toast, t, transactions]
   );
 
   // Taking money back out of a goal (e.g. an emergency): records an income
@@ -954,6 +1004,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadingData,
     transactions,
     goals,
+    primaryGoal,
+    setPrimaryGoal,
+    rate,
     categories,
     categoryById,
     budgets,
