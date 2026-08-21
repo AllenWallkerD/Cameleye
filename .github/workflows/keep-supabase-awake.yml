@@ -1,0 +1,32 @@
+# Supabase's free tier pauses a project after 7 days with no requests, and a
+# paused project takes the whole app down with it (its hostname stops resolving
+# entirely, so the client just fails to connect). One cheap query every other
+# day is enough to keep it counted as active.
+name: Keep Supabase awake
+
+on:
+  schedule:
+    - cron: "17 6 */2 * *" # every 2 days, 06:17 UTC
+  workflow_dispatch: # and on demand, from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query the database
+        env:
+          URL: ${{ secrets.SUPABASE_URL }}
+          KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          # RLS returns an empty set for an anonymous caller — that's fine, the
+          # point is that Postgres actually ran a query.
+          code=$(curl -sS -m 30 -o /tmp/body -w '%{http_code}' \
+            "$URL/rest/v1/goals?select=id&limit=1" \
+            -H "apikey: $KEY" -H "Authorization: Bearer $KEY")
+          echo "HTTP $code: $(head -c 200 /tmp/body)"
+          # 2xx means the project is up and answering.
+          case "$code" in
+            2*) echo "Project is awake." ;;
+            *)  echo "::error::Supabase did not answer normally (HTTP $code)."; exit 1 ;;
+          esac
