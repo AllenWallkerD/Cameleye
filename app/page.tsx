@@ -11,6 +11,7 @@ import { CategoryIcon } from "@/components/category-icons";
 import { MONTHS } from "@/components/date-picker";
 import { DashboardSkeleton } from "@/components/skeleton";
 import { OnboardingCard } from "@/components/onboarding-card";
+import { GoalFocus } from "@/components/goal-focus";
 import { Icon } from "@/components/icons";
 import { buildBarSeries, budgetMultiplier, inPeriod, shiftYM } from "@/lib/data";
 import { formatMoney } from "@/lib/currency";
@@ -94,10 +95,20 @@ export default function DashboardPage() {
   }, [budgets, filtered, period, categoryById]);
 
   if (loadingData) return <DashboardSkeleton />;
-  if (transactions.length === 0) return <OnboardingCard />;
+  // a fresh account starts with the goal question, then the "add your first
+  // expense" nudge — the goal is what makes every later number mean something
+  if (transactions.length === 0)
+    return (
+      <>
+        <GoalFocus />
+        <OnboardingCard />
+      </>
+    );
 
   return (
     <>
+      <GoalFocus />
+
       <PeriodTabs period={period} onChange={setPeriod} />
 
       <SummaryCards
